@@ -1,0 +1,26 @@
+# Intellij IDEA files
+.idea
+*.iml
+*.ipr
+*.iws
+
+# Eclipse files
+.classpath
+.project
+.settings/
+
+# gEdit temporal files
+*~
+
+# Python bytecode
+*.pyc
+*.egg-info
+
+# Distribution folder
+dist/
+
+# Notebook checkpoints
+.ipynb_checkpoints
+
+# Configuration files
+*.conf
