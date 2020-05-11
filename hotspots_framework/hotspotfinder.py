@@ -58,6 +58,26 @@ class HotspotFinder:
         self.genome = genome
         self.group_by = group_by
         self.cores = cores
+        # TODO add command line
+        merge_mutations_types = False
+        if not merge_mutations_types:
+            self.muttype_dict = {
+                's': 'snv',
+                'm': 'mnv',
+                'i': 'ins',
+                'd': 'del'
+            }
+        else:
+            self.muttype_dict = {
+                's': 'mut',
+                'm': 'mut',
+                'i': 'mut',
+                'd': 'mut'
+            }
+
+        self.cohort_to_mutation_counts = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
+        self.cohort_to_mutation_alts = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+        self.hotspots = defaultdict(lambda: defaultdict(dict))
 
     @staticmethod
     def json_convert_save(dictionary, output_file):
@@ -110,9 +130,9 @@ class HotspotFinder:
                     tree[chrom].addi(int(start), int(end) + 1, info)  # +1 interval
         return tree
 
-    def preprocessing(self):
+    def parse_mutations(self):
         """
-        Load mutations file into hotspot dictionary with SNVs.
+        Load mutations file into dictionaries containing number of mutations and alternates
 
         Args:
             None
@@ -122,105 +142,139 @@ class HotspotFinder:
 
         """
 
-        substitutions_dict = defaultdict(lambda: defaultdict(int))
-        mut_sample_alt_dict = defaultdict(lambda: defaultdict(lambda: defaultdict(str)))
-        samples_set = set()
+        chromosomes = list(map(str, range(1, 23))) + ['X', 'Y']
+        cohort_to_sample = defaultdict(set)
+        cohort_nmuts = defaultdict(lambda: defaultdict(int))
+        substitutions_dict = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+        insertions_dict = defaultdict(lambda: defaultdict(list))
+        deletions_dict = defaultdict(lambda: defaultdict(list))
 
-        # Open output files and read mutations
-        with open(self.tmp_output_file_samples, 'w') as samp_fd:
-            with open(self.tmp_output_file_alts, 'w') as alts_fd:
-                with open(self.tmp_output_file_indels, 'w') as indels_fd:
-                    for row in readers.variants(
-                            file=self.input_file,
-                            required=['CHROMOSOME', 'POSITION', 'REF', 'ALT', 'SAMPLE'],
-                            extra=['GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE']
-                    ):
-                        chromosome = row['CHROMOSOME']
-                        position = str(row['POSITION'])
-                        ref = row['REF']
-                        alt = row['ALT']
-                        sample = row['SAMPLE']
-                        samples_set.add(sample)
-                        mutation = '{}_{}'.format(chromosome, position)
-                        if not self.group_by:
-                            cohort = 'cohort'
+        # Read mutations
+        for row in readers.variants(
+                file=self.input_file,
+                required=['CHROMOSOME', 'POSITION', 'REF', 'ALT', 'SAMPLE'],
+                extra=['GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE']
+        ):
+            chromosome = row['CHROMOSOME']
+            position = str(row['POSITION'])
+            ref = row['REF']
+            alt = row['ALT']
+            sample = row['SAMPLE']
+            chr_pos = '{}_{}'.format(chromosome, position)
+            # Identify group
+            # If no group, hotspots are computed using the whole input file
+            if not self.group_by:
+                cohort = 'cohort'
+            else:
+                cohort = row[self.group_by]
+            # Keep track of samples from each group
+            cohort_to_sample[cohort].add(sample)
+            # Keep track of how many mutations each group has
+            cohort_nmuts['raw'][cohort] += 1
+
+            # Read mutations in autosomal + sexual chromosomes
+            if chromosome in set(chromosomes):
+                if ref != alt:
+                    # Read substitutions of any length
+                    if ref != '-' and alt != '-':
+                        if len(alt) == 1:
+                            substitutions_dict['snvs'][sample][chr_pos].append(alt)
                         else:
-                            cohort = row[self.group_by]
+                            substitutions_dict['mnvs'][sample][chr_pos].append(alt)
+                    # Read indels of any length
+                    else:
+                        # Insertions
+                        if ref == '-':
+                            insertions_dict[sample][chr_pos].append(alt)
+                        # Deletion
+                        elif alt == '-':
+                            deletions_dict[sample][chr_pos].append(alt)
 
-                        # If substitution
-                        if ref != '-' and alt != '-':
-                            # If SBS, DBS are skipped
-                            if len(ref) == 1 and len(alt) == 1:
-                                # If this mutation (postion and alternate) have not been listed in the sample,
-                                # check that no adjacent mutations for the same patient listed and then add to
-                                # dictionary
-                                if not mut_sample_alt_dict[cohort][mutation][sample]:
-                                    mutation_5 = '{}_{}'.format(chromosome, int(position) - 1)
-                                    mutation_3 = '{}_{}'.format(chromosome, int(position) + 1)
-                                    # 5' SNV same patient
-                                    if not mut_sample_alt_dict[cohort][mutation_5][sample]:
-                                        # 3' SNV same patient
-                                        if not mut_sample_alt_dict[cohort][mutation_3][sample]:
-                                            mut_sample_alt_dict[cohort][mutation][sample] = alt
-                                            del mut_sample_alt_dict[cohort][mutation_5][sample]
-                                            del mut_sample_alt_dict[cohort][mutation_3][sample]
-                                            # FIXME this only works for files with one grouping condition
-                                            alts_fd.write('{}\n'.format('\t'.join([chromosome, position, position, alt])))
-                                            samp_fd.write('{}\n'.format('\t'.join([chromosome, position, position, sample])))
-                                        else:
-                                            # Remove mutation and 3' mutation
-                                            del mut_sample_alt_dict[cohort][mutation_3][sample]
-                                            del mut_sample_alt_dict[cohort][mutation][sample]
-                                            logger.debug('sample {} has two SNVs in adjacent positions {} and {}'
-                                                         'None is analyzed'.format(sample, mutation, mutation_3))
-                                    # Remove mutation and 5' mutation
-                                    else:
-                                        del mut_sample_alt_dict[cohort][mutation_5][sample]
-                                        del mut_sample_alt_dict[cohort][mutation][sample]
-                                        logger.debug('sample {} has two SNVs in adjacent positions {} and {}.'
-                                                     'None is analyzed'.format(sample, mutation_5, mutation))
-                                else:
-                                    if alt == mut_sample_alt_dict[cohort][mutation][sample]:
-                                        logger.debug('sample {} has duplicated annotation of SNV at chr{}:{}>{}'
-                                                     'This is analyzed as a SNV'.format(
-                                                      sample, chromosome, position, alt))
-                                    else:
-                                        logger.debug('sample {0} has different nucleotide substitutions at '
-                                                     'chr{1}:{2}>{3}|{4}'.format(
-                                            sample, chromosome, position, alt, mut_sample_alt_dict[mutation][sample])
-                                        )
-                                        mut_sample_alt_dict[mutation][sample] = mut_sample_alt_dict[mutation][sample] + '|' + alt
-                                        # FIXME this only works for files with one grouping condition
-                                        alts_fd.write('{}\n'.format('\t'.join([chromosome, position, position, alt])))
+        for cohort, nmuts in cohort_nmuts['raw'].items():
+            logger.info(f'Input mutations in {cohort} = {nmuts}')
 
-                        else:     # This is an indel of any length
-                            # if len(ref) == 1 and len(alt) == 1:
-                            indel_type = 'insertion' if ref == '-' else 'deletion'
-                            indels_fd.write('{}\n'.format(
-                                '\t'.join([chromosome, position, position, '{}>{}'.format(ref, alt), indel_type])))
-                            if mut_sample_alt_dict[cohort][mutation][sample]:
-                                logger.debug('sample {} has an SNVs and an indel in the same position {}'
-                                                .format(sample, position))
-        # Save
-        # for k, v in mut_sample_alt_dict.items():
-        #     if len(v) > 0:
-        #         substitutions_dict[k] = len(v)
-        # self.json_convert_save(substitutions_dict, self.tmp_output_file_subs)
-        #
-        # for file in [self.tmp_output_file_samples, self.tmp_output_file_alts, self.tmp_output_file_indels]:
-        #     self.tabix_convert_save(file)
+        # Check mutations per sample and add to cohort_to_mutation dicts
+        for cohort, set_of_samples in cohort_to_sample.items():
+            # FIXME remove sorted
+            for sample in sorted(set_of_samples):
+                snvs_in_sample = substitutions_dict['snvs'][sample]
+                mnvs_in_sample = substitutions_dict['mnvs'][sample]
+                ins_in_sample = insertions_dict[sample]
+                dels_in_sample = deletions_dict[sample]
 
+                total_muts_in_sample = defaultdict(list)
+                for set_of_muts, muttype in [
+                    (snvs_in_sample, self.muttype_dict['s']),
+                    (mnvs_in_sample, self.muttype_dict['m']),
+                    (ins_in_sample, self.muttype_dict['i']),
+                    (dels_in_sample, self.muttype_dict['d'])
+                ]:
+                    for chr_pos, alts in set_of_muts.items():
+                        total_muts_in_sample[chr_pos] += [(a, muttype) for a in alts]
+                warning_mutations = [(k, v) for k, v in total_muts_in_sample.items() if len(v) > 1]
+
+                logger.debug(sample)
+                logger.debug(total_muts_in_sample)
+                logger.debug(warning_mutations)
+
+                self.warning_positions = set()
+                if warning_mutations:
+                    # Load warning positions
+                    for position, alts in warning_mutations:
+                        alts_unique = set(alts)
+                        alts_simplified = [a for a, muttype in alts]
+                        self.warning_positions.add(position)
+                        if len(alts_unique) == 1:
+                            logger.warning(
+                                f'Sample "{sample}" position chr{position} has 2 alternates: {alts_simplified}')
+                            alt, muttype = list(alts_unique)[0]
+                            self.cohort_to_mutation_alts[cohort][muttype][position] += [alt]
+                            self.cohort_to_mutation_counts[cohort][muttype][position] += 1
+                        elif len(alts_unique) == 2:
+                            logger.warning(
+                                f'Sample "{sample}" position chr{position} has 2 or 3 alternates: {alts_simplified}. '
+                                f'Mutation counts and alternates might not match.')
+                            for mutation in alts_unique:
+                                alt, muttype = mutation
+                                self.cohort_to_mutation_alts[cohort][muttype][position] += [alt]
+                                self.cohort_to_mutation_counts[cohort][muttype][position] += 1
+                        else:
+                            logger.warning(
+                                f'Sample "{sample}" position chr{position} has 3 or more different alternates: '
+                                f'{alts_simplified}. Mutations are skipped from analysis')
+
+                # Load non-warning positions
+                for position, mutation in total_muts_in_sample.items():
+                    if not position in self.warning_positions:
+                        self.cohort_to_mutation_alts[cohort][mutation[0][1]][position] += [mutation[0][0]]
+                        self.cohort_to_mutation_counts[cohort][mutation[0][1]][position] += 1
+
+        logger.debug(self.cohort_to_mutation_counts)
+        logger.debug(self.cohort_to_mutation_alts)
+
+    def find_hotspots(self):
+        """
+        Identifies hotspots and generates raw hotspots file
+
+        Returns:
+            None
+        """
+        for cohort, data in self.cohort_to_mutation_counts.items():
+            for muttype, mutated_positions in data.items():
+                self.hotspots[cohort][muttype] = {k: v for k, v in mutated_positions.items() if v >= self.hotspot_mutations}
+
+        print(self.hotspots)
 
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.option('-i', '--input-file', default=None, required=True, type=click.Path(exists=True),
               help='File containing somatic mutations in TSV format')
 @click.option('-o', '--output-path', default=None, required=True, help='Output directory')
-@click.option('-mut', '--hotspot-mutations', type=click.IntRange(min=2, max=None, clamp=False), default=3,
+@click.option('-mut', '--hotspot-mutations', type=click.IntRange(min=2, max=None, clamp=False), default=2,
               help='Cutoff of mutations to define a hotspot. Default is 3')
 @click.option('-g', '--genome', default='hg19',
               type=click.Choice(['hg38', 'hg19']),
               help='Genome to use')
-@click.option('-group', '--group_by', default=None, type=click.Choice(['GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE']),
+@click.option('-group', '--group-by', default=None, type=click.Choice(['GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE']),
               help='Header of the column to group hotspots identification')
 @click.option('-c', '--cores', type=click.IntRange(min=1, max=os.cpu_count(), clamp=False), default=os.cpu_count(),
               help='Number of cores to use in the computation. By default it uses all available cores.')
@@ -257,7 +311,7 @@ def main(input_file, output_path, hotspot_mutations, genome, group_by, cores, lo
     daiquiri.setup(level=LOGS[log_level], outputs=(
         daiquiri.output.STDERR,
         daiquiri.output.File(
-            filename=output_file.split('.')[0] + '.log',
+            filename=f'{output_file.split(".")[0]}.log',
             directory=output_path
         )
     ))
@@ -267,10 +321,10 @@ def main(input_file, output_path, hotspot_mutations, genome, group_by, cores, lo
     logger.info('Initializing HotspotFinder...')
     logger.info('\n'.join([
         '\n'
-        'Input data file: {}'.format(input_file),
-        'Output results directory: {}'.format(output_path),
-        'Genome: {}'.format(genome),
-        'Cutoff hotspots mutations: {}'.format(hotspot_mutations)
+        f'Input data file: {input_file}',
+        f'Output results directory: {output_path}',
+        f'Genome: {genome}',
+        f'Cutoff hotspots mutations: {hotspot_mutations}'
     ]))
 
     # Generate stage 1 hotspots (no annotations)
@@ -284,7 +338,8 @@ def main(input_file, output_path, hotspot_mutations, genome, group_by, cores, lo
         cores
     )
 
-    experiment.preprocessing()
+    experiment.parse_mutations()
+    experiment.find_hotspots()
 
 
 if __name__ == '__main__':
