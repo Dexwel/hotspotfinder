@@ -10,8 +10,8 @@ import logging
 import os
 import shutil
 
-from bgparsers import readers
 import bgreference as bgref
+from bgparsers import readers
 import click
 import daiquiri
 from intervaltree import IntervalTree
@@ -49,11 +49,7 @@ class HotspotFinder:
 
         self.input_file = input_file
         self.output_file = output_file
-        self.output_path_tmp = output_path_tmp
-        self.tmp_output_file_subs = os.path.join(output_path_tmp, 'subs.json')
-        self.tmp_output_file_alts = os.path.join(output_path_tmp, 'alts.json')
-        self.tmp_output_file_samples = os.path.join(output_path_tmp, 'samples.json')
-        self.tmp_output_file_indels = os.path.join(output_path_tmp, 'indels.json')
+        self.output_file_tmp_hotspots = os.path.join(output_path_tmp, 'hotspots_v1.txt')
         self.hotspot_mutations = hotspot_mutations
         self.genome = genome
         self.group_by = group_by
@@ -75,6 +71,7 @@ class HotspotFinder:
                 'd': 'mut'
             }
 
+        self.cohort_to_sample = defaultdict(set)
         self.cohort_to_mutation_counts = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
         self.cohort_to_mutation_alts = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
         self.hotspots = defaultdict(lambda: defaultdict(dict))
@@ -143,7 +140,6 @@ class HotspotFinder:
         """
 
         chromosomes = list(map(str, range(1, 23))) + ['X', 'Y']
-        cohort_to_sample = defaultdict(set)
         cohort_nmuts = defaultdict(lambda: defaultdict(int))
         substitutions_dict = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
         insertions_dict = defaultdict(lambda: defaultdict(list))
@@ -168,7 +164,7 @@ class HotspotFinder:
             else:
                 cohort = row[self.group_by]
             # Keep track of samples from each group
-            cohort_to_sample[cohort].add(sample)
+            self.cohort_to_sample[cohort].add(sample)
             # Keep track of how many mutations each group has
             cohort_nmuts['raw'][cohort] += 1
 
@@ -194,9 +190,8 @@ class HotspotFinder:
             logger.info(f'Input mutations in {cohort} = {nmuts}')
 
         # Check mutations per sample and add to cohort_to_mutation dicts
-        for cohort, set_of_samples in cohort_to_sample.items():
-            # FIXME remove sorted
-            for sample in sorted(set_of_samples):
+        for cohort, set_of_samples in self.cohort_to_sample.items():
+            for sample in set_of_samples:
                 snvs_in_sample = substitutions_dict['snvs'][sample]
                 mnvs_in_sample = substitutions_dict['mnvs'][sample]
                 ins_in_sample = insertions_dict[sample]
@@ -249,7 +244,7 @@ class HotspotFinder:
                         self.cohort_to_mutation_alts[cohort][mutation[0][1]][position] += [mutation[0][0]]
                         self.cohort_to_mutation_counts[cohort][mutation[0][1]][position] += 1
 
-        logger.debug(self.cohort_to_mutation_counts)
+        # logger.debug(self.cohort_to_mutation_counts)
         logger.debug(self.cohort_to_mutation_alts)
 
     def find_hotspots(self):
@@ -263,7 +258,86 @@ class HotspotFinder:
             for muttype, mutated_positions in data.items():
                 self.hotspots[cohort][muttype] = {k: v for k, v in mutated_positions.items() if v >= self.hotspot_mutations}
 
-        print(self.hotspots)
+        logger.debug(self.hotspots)
+
+    def write_raw_hotspots(self):
+        """
+        Writes output file for HotspotFinder
+
+        Returns:
+            None
+        """
+        nucleotides = ('A', 'C', 'G', 'T')
+        header = [
+            'CHROMOSOME',
+            'POSITION',
+            'ID',
+            'COHORT',
+            'N_COHORT_SAMPLES',
+            'N_MUT_SAMPLES',
+            'FRAC_MUT_SAMPLES',
+            'MUT_TYPE',
+            'N_MUT_TYPE',
+            'REF',
+            'ALT',
+            'FRAC_ALT',
+            'CONTEXT_3',
+            'CONTEXT_5',
+            'WARNING_POSITION'
+        ]
+
+        # FIXME how does it work with merged?
+        # FIXME sort
+        with open(self.output_file_tmp_hotspots, 'w') as ofd:
+            ofd.write('{}\n'.format('\t'.join(header)))
+            for cohort, data in self.hotspots.items():
+                n_cohort_samples = len(self.cohort_to_sample[cohort])
+                for muttype, hotspots in data.items():
+                    for hotspot_id, n_mut_samples in hotspots.items():
+                        chromosome, position = hotspot_id.split('_')
+                        frac_mut_samples = str(n_mut_samples / n_cohort_samples)
+
+                        # Sequence info
+                        pentamer_sequence = bgref.refseq(self.genome, chromosome, int(position) - 2, 5)
+                        trimer_sequence = pentamer_sequence[1:4]
+                        ref = pentamer_sequence[2]
+
+                        # Alternates
+                        list_of_alternates = self.cohort_to_mutation_alts[cohort][muttype][hotspot_id]
+                        alternates_counts = []
+                        alternates_fractions = []
+                        for nucleotide in nucleotides:
+                            count = list_of_alternates.count(nucleotide)
+                            alternates_counts.append(f'{nucleotide}={count}')
+                            alternates_fractions.append(f'{nucleotide}={count / n_mut_samples}')
+                        alternates_counts = ','.join(alternates_counts)
+                        alternates_fractions = ','.join(alternates_fractions)
+
+                        # Warning position
+                        # FIXME rename
+                        warning_position = 'True' if position in self.warning_positions else 'False'
+
+                        # Write
+                        ofd.write('{}\n'.format('\t'.join(list(map(str,
+                            [
+                                chromosome,
+                                position,
+                                hotspot_id,
+                                cohort,
+                                n_cohort_samples,
+                                n_mut_samples,
+                                frac_mut_samples,
+                                muttype,
+                                '1',
+                                ref,
+                                alternates_counts,
+                                alternates_fractions,
+                                trimer_sequence,
+                                pentamer_sequence,
+                                warning_position
+                             ]
+
+                        )))))
 
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.option('-i', '--input-file', default=None, required=True, type=click.Path(exists=True),
@@ -340,6 +414,7 @@ def main(input_file, output_path, hotspot_mutations, genome, group_by, cores, lo
 
     experiment.parse_mutations()
     experiment.find_hotspots()
+    experiment.write_raw_hotspots()
 
 
 if __name__ == '__main__':
