@@ -293,7 +293,8 @@ class HotspotFinder:
             for cohort, data in self.hotspots.items():
                 n_cohort_samples = len(self.cohort_to_sample[cohort])
                 for muttype, hotspots in data.items():
-                    for hotspot_id, n_mut_samples in hotspots.items():
+                    for hotspot_id, n_mut_samples in sorted(hotspots.items(), key=lambda item: item[1], reverse=True):
+                        print(hotspot_id, n_mut_samples)
                         chromosome, position = hotspot_id.split('_')
                         frac_mut_samples = str(n_mut_samples / n_cohort_samples)
 
