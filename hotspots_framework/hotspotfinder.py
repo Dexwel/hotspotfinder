@@ -50,10 +50,12 @@ class HotspotFinder:
         self.input_file = input_file
         self.output_file = output_file
         self.output_file_tmp_hotspots = os.path.join(output_path_tmp, 'hotspots_v1.txt')
+        self.output_file_tmp_warning = os.path.join(output_path_tmp, 'warning_mutations.txt')
         self.hotspot_mutations = hotspot_mutations
         self.genome = genome
         self.group_by = group_by
         self.cores = cores
+
         # TODO add command line
         merge_mutations_types = False
         if not merge_mutations_types:
@@ -75,6 +77,8 @@ class HotspotFinder:
         self.cohort_to_mutation_counts = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
         self.cohort_to_mutation_alts = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
         self.hotspots = defaultdict(lambda: defaultdict(dict))
+
+        #TODO refactor mutations as namedtuple so that we can check the REF in file with bgreference
 
     @staticmethod
     def json_convert_save(dictionary, output_file):
@@ -152,11 +156,11 @@ class HotspotFinder:
                 extra=['GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE']
         ):
             chromosome = row['CHROMOSOME']
-            position = str(row['POSITION'])
+            chr_position = str(row['POSITION'])
             ref = row['REF']
             alt = row['ALT']
             sample = row['SAMPLE']
-            chr_pos = '{}_{}'.format(chromosome, position)
+            chr_pos = '{}_{}'.format(chromosome, chr_position)
             # Identify group
             # If no group, hotspots are computed using the whole input file
             if not self.group_by:
@@ -190,59 +194,74 @@ class HotspotFinder:
             logger.info(f'Input mutations in {cohort} = {nmuts}')
 
         # Check mutations per sample and add to cohort_to_mutation dicts
-        for cohort, set_of_samples in self.cohort_to_sample.items():
-            for sample in set_of_samples:
-                snvs_in_sample = substitutions_dict['snvs'][sample]
-                mnvs_in_sample = substitutions_dict['mnvs'][sample]
-                ins_in_sample = insertions_dict[sample]
-                dels_in_sample = deletions_dict[sample]
+        # Write warning positions
+        header = ['CHROMOSOME', 'POSITION', 'REF', 'ALT', 'SAMPLE', 'WARNING', 'SKIP']
+        with open(self.output_file_tmp_warning, 'w') as ofd:
+            ofd.write('{}\n'.format('\t'.join(header)))
+            for cohort, set_of_samples in self.cohort_to_sample.items():
+                for sample in set_of_samples:
+                    snvs_in_sample = substitutions_dict['snvs'][sample]
+                    mnvs_in_sample = substitutions_dict['mnvs'][sample]
+                    ins_in_sample = insertions_dict[sample]
+                    dels_in_sample = deletions_dict[sample]
 
-                total_muts_in_sample = defaultdict(list)
-                for set_of_muts, muttype in [
-                    (snvs_in_sample, self.muttype_dict['s']),
-                    (mnvs_in_sample, self.muttype_dict['m']),
-                    (ins_in_sample, self.muttype_dict['i']),
-                    (dels_in_sample, self.muttype_dict['d'])
-                ]:
-                    for chr_pos, alts in set_of_muts.items():
-                        total_muts_in_sample[chr_pos] += [(a, muttype) for a in alts]
-                warning_mutations = [(k, v) for k, v in total_muts_in_sample.items() if len(v) > 1]
+                    total_muts_in_sample = defaultdict(list)
+                    for set_of_muts, muttype in [
+                        (snvs_in_sample, self.muttype_dict['s']),
+                        (mnvs_in_sample, self.muttype_dict['m']),
+                        (ins_in_sample, self.muttype_dict['i']),
+                        (dels_in_sample, self.muttype_dict['d'])
+                    ]:
+                        for chr_pos, alts in set_of_muts.items():
+                            total_muts_in_sample[chr_pos] += [(a, muttype) for a in alts]
+                    warning_mutations = [(k, v) for k, v in total_muts_in_sample.items() if len(v) > 1]
 
-                logger.debug(sample)
-                logger.debug(total_muts_in_sample)
-                logger.debug(warning_mutations)
+                    logger.debug(sample)
+                    logger.debug(total_muts_in_sample)
+                    logger.debug(warning_mutations)
 
-                self.warning_positions = set()
-                if warning_mutations:
-                    # Load warning positions
-                    for position, alts in warning_mutations:
-                        alts_unique = set(alts)
-                        alts_simplified = [a for a, muttype in alts]
-                        self.warning_positions.add(position)
-                        if len(alts_unique) == 1:
-                            logger.warning(
-                                f'Sample "{sample}" position chr{position} has 2 alternates: {alts_simplified}')
-                            alt, muttype = list(alts_unique)[0]
-                            self.cohort_to_mutation_alts[cohort][muttype][position] += [alt]
-                            self.cohort_to_mutation_counts[cohort][muttype][position] += 1
-                        elif len(alts_unique) == 2:
-                            logger.warning(
-                                f'Sample "{sample}" position chr{position} has 2 or 3 alternates: {alts_simplified}. '
-                                f'Mutation counts and alternates might not match.')
-                            for mutation in alts_unique:
-                                alt, muttype = mutation
-                                self.cohort_to_mutation_alts[cohort][muttype][position] += [alt]
-                                self.cohort_to_mutation_counts[cohort][muttype][position] += 1
-                        else:
-                            logger.warning(
-                                f'Sample "{sample}" position chr{position} has 3 or more different alternates: '
-                                f'{alts_simplified}. Mutations are skipped from analysis')
+                    self.warning_chr_position = set()
+                    if warning_mutations:
+                        # Load warning positions
+                        for chr_position, alts in warning_mutations:
+                            chromosome, position = chr_position.split('_')
+                            alts_unique = set(alts)
+                            alts_simplified = [a for a, muttype in alts]
+                            self.warning_chr_position.add(chr_position)
+                            if len(alts_unique) == 1:
+                                logger.warning(
+                                    f'Sample "{sample}" position chr{chr_position} has 2 alternates: {alts_simplified}')
+                                alt, muttype = list(alts_unique)[0]
+                                self.cohort_to_mutation_alts[cohort][muttype][chr_position] += [alt]
+                                self.cohort_to_mutation_counts[cohort][muttype][chr_position] += 1
+                                #FIXME add reference when mutations are namedtuple
+                                ofd.write('{}\n'.format('\t'.join([
+                                    chromosome, position, 'NA', ','.join(alts_simplified), sample, 'warning_1', 'False'
+                                ])))
+                            elif len(alts_unique) == 2:
+                                logger.warning(
+                                    f'Sample "{sample}" position chr{chr_position} has 2 or 3 alternates: {alts_simplified}. '
+                                    f'Mutation counts and alternates might not match.')
+                                for mutation in alts_unique:
+                                    alt, muttype = mutation
+                                    self.cohort_to_mutation_alts[cohort][muttype][chr_position] += [alt]
+                                    self.cohort_to_mutation_counts[cohort][muttype][chr_position] += 1
+                                    ofd.write('{}\n'.format('\t'.join([
+                                        chromosome, position, 'NA', ','.join(alts_simplified), sample, 'warning_2', 'False'
+                                    ])))
+                            else:
+                                logger.warning(
+                                    f'Sample "{sample}" position chr{chr_position} has 3 or more different alternates: '
+                                    f'{alts_simplified}. Mutations are skipped from analysis')
+                                ofd.write('{}\n'.format('\t'.join([
+                                    chromosome, position, 'NA', ','.join(alts_simplified), sample, 'warning_3', 'True'
+                                ])))
 
-                # Load non-warning positions
-                for position, mutation in total_muts_in_sample.items():
-                    if not position in self.warning_positions:
-                        self.cohort_to_mutation_alts[cohort][mutation[0][1]][position] += [mutation[0][0]]
-                        self.cohort_to_mutation_counts[cohort][mutation[0][1]][position] += 1
+                    # Load non-warning positions
+                    for chr_position, mutation in total_muts_in_sample.items():
+                        if not chr_position in self.warning_chr_position:
+                            self.cohort_to_mutation_alts[cohort][mutation[0][1]][chr_position] += [mutation[0][0]]
+                            self.cohort_to_mutation_counts[cohort][mutation[0][1]][chr_position] += 1
 
         # logger.debug(self.cohort_to_mutation_counts)
         logger.debug(self.cohort_to_mutation_alts)
@@ -287,14 +306,12 @@ class HotspotFinder:
         ]
 
         # FIXME how does it work with merged?
-        # FIXME sort
         with open(self.output_file_tmp_hotspots, 'w') as ofd:
             ofd.write('{}\n'.format('\t'.join(header)))
             for cohort, data in self.hotspots.items():
                 n_cohort_samples = len(self.cohort_to_sample[cohort])
                 for muttype, hotspots in data.items():
                     for hotspot_id, n_mut_samples in sorted(hotspots.items(), key=lambda item: item[1], reverse=True):
-                        print(hotspot_id, n_mut_samples)
                         chromosome, position = hotspot_id.split('_')
                         frac_mut_samples = str(n_mut_samples / n_cohort_samples)
 
@@ -316,7 +333,7 @@ class HotspotFinder:
 
                         # Warning position
                         # FIXME rename
-                        warning_position = 'True' if position in self.warning_positions else 'False'
+                        warning_position = 'True' if hotspot_id in self.warning_chr_position else 'False'
 
                         # Write
                         ofd.write('{}\n'.format('\t'.join(list(map(str,
