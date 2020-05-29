@@ -31,12 +31,13 @@ LOGS = {
 class HotspotFinder:
     """Class to identify and annotate hotspots with basic information"""
 
-    def __init__(self, input_file, output_file, output_path_tmp, hotspot_mutations, genome, group_by, cores):
+    def __init__(self, input_file, output_file_results, output_file_warning, output_path_tmp, hotspot_mutations, genome, group_by, cores):
         """
         Initialize HotspotFinder class
         Args:
             input_file (str): path to input data
-            output_file (str): path to output file
+            output_file_results (str): path to output file
+            output_file_warning (str): path to genomic positions where warning is found
             output_path_tmp (str): path to tmp directory
             hotspot_mutations (int): cutoff of mutations to define a hotspot
             genome (str): reference genome
@@ -48,9 +49,10 @@ class HotspotFinder:
         """
 
         self.input_file = input_file
-        self.output_file = output_file
-        self.output_file_tmp_hotspots = os.path.join(output_path_tmp, 'hotspots_v1.txt')
-        self.output_file_tmp_warning = os.path.join(output_path_tmp, 'warning_mutations.txt')
+        self.output_file_hotspots = output_file_results
+        self.output_file_warning = output_file_warning
+        # self.output_file_tmp_hotspots = os.path.join(output_path_tmp, 'hotspots_v1.txt')
+        # self.output_file_tmp_warning = os.path.join(output_path_tmp, 'warning_mutations.txt')
         self.hotspot_mutations = hotspot_mutations
         self.genome = genome
         self.group_by = group_by
@@ -196,7 +198,7 @@ class HotspotFinder:
         # Check mutations per sample and add to cohort_to_mutation dicts
         # Write warning positions
         header = ['CHROMOSOME', 'POSITION', 'REF', 'ALT', 'SAMPLE', 'WARNING', 'SKIP']
-        with open(self.output_file_tmp_warning, 'w') as ofd:
+        with open(self.output_file_warning, 'w') as ofd:
             ofd.write('{}\n'.format('\t'.join(header)))
             for cohort, set_of_samples in self.cohort_to_sample.items():
                 for sample in set_of_samples:
@@ -306,7 +308,7 @@ class HotspotFinder:
         ]
 
         # FIXME how does it work with merged?
-        with open(self.output_file_tmp_hotspots, 'w') as ofd:
+        with open(self.output_file_hotspots, 'w') as ofd:
             ofd.write('{}\n'.format('\t'.join(header)))
             for cohort, data in self.hotspots.items():
                 n_cohort_samples = len(self.cohort_to_sample[cohort])
@@ -393,17 +395,22 @@ def main(input_file, output_path, hotspot_mutations, genome, group_by, cores, lo
     if not os.path.exists(output_path):
         os.makedirs(output_path, exist_ok=True)
     output_path_tmp = os.path.join(output_path, 'tmp')
-    if not os.path.exists(output_path_tmp):
-        os.makedirs(output_path_tmp, exist_ok=True)
+    # if not os.path.exists(output_path_tmp):
+    #     os.makedirs(output_path_tmp, exist_ok=True)
+
+    # File name
+    file_name = input_file.split('/')[-1].split('.')[0]
 
     # Output file name
-    output_file = os.path.join(output_path, 'hotspotfinder_results.txt.gz')
+    output_file_results = os.path.join(output_path, f'{file_name}.results.txt')
+    output_file_warning = os.path.join(output_path, f'{file_name}.warningpositions.txt')
+
 
     # Log
     daiquiri.setup(level=LOGS[log_level], outputs=(
         daiquiri.output.STDERR,
         daiquiri.output.File(
-            filename=f'{output_file.split(".")[0]}.log',
+            filename=f'{file_name}.log',
             directory=output_path
         )
     ))
@@ -422,7 +429,8 @@ def main(input_file, output_path, hotspot_mutations, genome, group_by, cores, lo
     # Generate stage 1 hotspots (no annotations)
     experiment = HotspotFinder(
         input_file,
-        output_file,
+        output_file_results,
+        output_file_warning,
         output_path_tmp,
         hotspot_mutations,
         genome,
