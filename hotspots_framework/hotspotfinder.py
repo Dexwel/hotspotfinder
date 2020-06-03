@@ -166,6 +166,7 @@ class HotspotFinder:
             # Identify group
             # If no group, hotspots are computed using the whole input file
             if not self.group_by:
+                #FIXME update to input file name
                 cohort = 'cohort'
             else:
                 cohort = row[self.group_by]
@@ -244,13 +245,13 @@ class HotspotFinder:
                                 logger.warning(
                                     f'Sample "{sample}" position chr{chr_position} has 2 or 3 alternates: {alts_simplified}. '
                                     f'Mutation counts and alternates might not match.')
+                                ofd.write('{}\n'.format('\t'.join([
+                                    chromosome, position, 'NA', ','.join(alts_simplified), sample, 'warning_2', 'False'
+                                ])))
                                 for mutation in alts_unique:
                                     alt, muttype = mutation
                                     self.cohort_to_mutation_alts[cohort][muttype][chr_position] += [alt]
                                     self.cohort_to_mutation_counts[cohort][muttype][chr_position] += 1
-                                    ofd.write('{}\n'.format('\t'.join([
-                                        chromosome, position, 'NA', ','.join(alts_simplified), sample, 'warning_2', 'False'
-                                    ])))
                             else:
                                 logger.warning(
                                     f'Sample "{sample}" position chr{chr_position} has 3 or more different alternates: '
