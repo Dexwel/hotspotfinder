@@ -113,38 +113,6 @@ class HotspotFinder:
         #TODO refactor mutations as namedtuple so that we can check the REF in file with bgreference
 
     @staticmethod
-    def json_convert_save(dictionary, output_file):
-        """
-        Convert dictionary to json format and save it
-
-        Args:
-            dictionary (dict): dictionary of hotspots
-            output_file (str): path to output json file
-
-        Returns:
-            None
-        """
-        json_dict = json.dumps(dict(dictionary))
-        with open(output_file, 'w') as ofd:
-            ofd.write(json_dict)
-
-    @staticmethod
-    def tabix_convert_save(file):
-        """
-        Convert to tabix and save
-        Args:
-            file (str): path to file
-
-        Returns:
-            None
-        """
-
-        file_gz = '{}.gz'.format(file)
-        os.system('cat {} | sort -k1V -k2n -k3n | bgzip > {}'.format(file, file_gz))
-        os.system('tabix --sequence 1 --begin 2 --end 3 {}'.format(file_gz))
-        os.system('rm {}'.format(file))
-
-    @staticmethod
     def load_intervaltree(files):
         """
         Load regions into intervaltree
