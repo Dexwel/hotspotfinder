@@ -327,7 +327,7 @@ class HotspotFinder:
             'CONTEXT_3',
             'CONTEXT_5',
             'WARNING_POSITION',
-            'MAPPABILITY_100bp',
+            'PILEUP_MAPPABILITY_100bp',
             'VARIATION_GNOMAD',
             'GENOMIC_ELEMENTS',
             'GENOMIC_ELEMENTS_TYPE'
@@ -370,9 +370,9 @@ class HotspotFinder:
                         map_data = 'low'
                         try:
                             for info in mappability_tb.query(f'chr{chromosome}', int(position), int(position)):
-                                map_data = 'high'
+                                map_data = 'high (>=0.9)'
                         except tabix.TabixError:
-                            map_data = 'NA'
+                            map_data = 'low (<0.9)'
 
                         # Variation
                         var_data = []
