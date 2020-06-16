@@ -34,8 +34,8 @@ class HotspotFinder:
 
     def __init__(self,
                  input_file,
-                 mappability_file,
-                 snps_file,
+                 mappability_data,
+                 variation_data,
                  genomic_elements,
                  output_file_results,
                  output_file_warning,
@@ -49,8 +49,8 @@ class HotspotFinder:
         Initialize HotspotFinder class
         Args:
             input_file (str): path to input mutations data
-            mappability_file (str): mappability data to insersect
-            snps_file (str): SNPs data to insersect
+            mappability_data (str): mappability data to insersect
+            variation_data (str): SNPs data to insersect
             genomic_elements (str): regions or genomic elements data to intersect
             output_file_results (str): path to output file
             output_file_warning (str): path to genomic positions where warning is found
@@ -64,21 +64,35 @@ class HotspotFinder:
             None
         """
 
+        # Input output files
         self.input_file = input_file
         self.input_file_name = input_file.split('/')[-1].split('.')[0]
         self.output_file_hotspots = output_file_results
         self.output_file_warning = output_file_warning
         # self.output_file_tmp_hotspots = os.path.join(output_path_tmp, 'hotspots_v1.txt')
         # self.output_file_tmp_warning = os.path.join(output_path_tmp, 'warning_mutations.txt')
-        self.mappability_file = mappability_file
-        self.snps_file = snps_file
+
+        # Mappability data
+        self.mappability_data = mappability_data
+        if os.path.isfile(mappability_data):
+            self.mappability_file = mappability_data
+        else:
+            # FIXME add to BDgdata
+            #self.mappability_file = bgdata.get('mappability')
+            self.mappability_file = '/workspace/projects/noncoding_regions/data/mappability/hg19_100bp.coverage.regions.gz'
+
+        # Variation data
+        self.variation_data = variation_data
+        if os.path.isfile(variation_data):
+            self.variation_file = variation_data
+        else:
+            # FIXME add to BDgdata
+            #self.variation_file = bgdata.get('variation')
+            self.variation_file = '/workspace/datasets/gnomad/gnomad.genomes.r2.0.1.sites.noVEP.vcf.gz'
+
+        # Genomic elements data
         self.genomic_elements = genomic_elements
         self.regions_tree = None
-        self.hotspot_mutations = hotspot_mutations
-        self.genome = genome
-        self.group_by = group_by
-        self.cores = cores
-
         self.genomic_elements_names = [
             'cds',
             '5utr',
@@ -87,6 +101,12 @@ class HotspotFinder:
             'distal_promoters',
             'introns'
         ]
+
+        # Params
+        self.hotspot_mutations = hotspot_mutations
+        self.genome = genome
+        self.group_by = group_by
+        self.cores = cores
 
         # TODO add command line
         merge_mutations_types = False
@@ -105,6 +125,7 @@ class HotspotFinder:
                 'd': 'mut'
             }
 
+        self.cohort_total_mutations = defaultdict(int)
         self.cohort_to_sample = defaultdict(set)
         self.cohort_to_mutation_counts = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
         self.cohort_to_mutation_alts = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
@@ -146,7 +167,6 @@ class HotspotFinder:
         """
 
         chromosomes = list(map(str, range(1, 23))) + ['X', 'Y']
-        cohort_nmuts = defaultdict(lambda: defaultdict(int))
         substitutions_dict = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
         insertions_dict = defaultdict(lambda: defaultdict(list))
         deletions_dict = defaultdict(lambda: defaultdict(list))
@@ -172,7 +192,7 @@ class HotspotFinder:
             # Keep track of samples from each group
             self.cohort_to_sample[cohort].add(sample)
             # Keep track of how many mutations each group has
-            cohort_nmuts['raw'][cohort] += 1
+            self.cohort_total_mutations[cohort] += 1
 
             # Read mutations in autosomal + sexual chromosomes
             if chromosome in set(chromosomes):
@@ -192,7 +212,7 @@ class HotspotFinder:
                         elif alt == '-':
                             deletions_dict[sample][chr_pos].append(alt)
 
-        for cohort, nmuts in cohort_nmuts['raw'].items():
+        for cohort, nmuts in self.cohort_total_mutations.items():
             logger.info(f'Input mutations in {cohort} = {nmuts}')
 
         # Check mutations per sample and add to cohort_to_mutation dicts
@@ -281,7 +301,7 @@ class HotspotFinder:
 
         logger.debug(self.hotspots)
 
-    def write_raw_hotspots(self):
+    def write_hotspots(self):
         """
         Writes output file for HotspotFinder
 
@@ -296,8 +316,9 @@ class HotspotFinder:
             'ID_CHR_POS_TYPE',
             'COHORT',
             'N_COHORT_SAMPLES',
-            'N_MUT_SAMPLES',
-            'FRAC_MUT_SAMPLES',
+            'N_COHORT_MUTATIONS',
+            'N_MUTATED_SAMPLES',
+            'FRAC_MUTATED_SAMPLES',
             'MUT_TYPE',
             'N_MUT_TYPE',
             'REF',
@@ -306,15 +327,20 @@ class HotspotFinder:
             'CONTEXT_3',
             'CONTEXT_5',
             'WARNING_POSITION',
+            'MAPPABILITY_100bp',
+            'VARIATION_GNOMAD',
             'GENOMIC_ELEMENTS',
             'GENOMIC_ELEMENTS_TYPE'
         ]
+        mappability_tb = tabix.open(self.mappability_file)
+        variation_tb = tabix.open(self.variation_file)
 
         # FIXME how does it work with merged?
         with open(self.output_file_hotspots, 'w') as ofd:
             ofd.write('{}\n'.format('\t'.join(header)))
             for cohort, data in self.hotspots.items():
                 n_cohort_samples = len(self.cohort_to_sample[cohort])
+                n_cohort_mut = self.cohort_total_mutations[cohort]
                 for muttype, hotspots in data.items():
                     for hotspot_id, n_mut_samples in sorted(hotspots.items(), key=lambda item: item[1], reverse=True):
                         hotspot_id_type = f'{hotspot_id}_{muttype}'
@@ -340,6 +366,26 @@ class HotspotFinder:
                         # Warning flag: at least one sample in the dataset contains a warning in this position
                         warning_flag = 'True' if hotspot_id in self.warning_chr_position else 'False'
 
+                        # Mappability
+                        map_data = 'low'
+                        try:
+                            for info in mappability_tb.query(f'chr{chromosome}', int(position), int(position)):
+                                map_data = 'high'
+                        except tabix.TabixError:
+                            map_data = 'NA'
+
+                        # Variation
+                        var_data = []
+                        try:
+                            for info in variation_tb.query(chromosome, int(position), int(position)):
+                                #TODO update to regex
+                                var_data += [f'ID={info[2]}::REF={info[3]}::ALT={info[4]}::{"::".join(info[7].split(";")[:3])}']
+                        except tabix.TabixError:
+                            logger.warning(f'Position {chromosome}:{position} not found in variation data')
+                            pass
+
+                        var_data = ';'.join(var_data) if var_data else '.'
+
                         # Genomic elements intersecting the hotspot
                         genomic_elements_specific = []
                         genomic_elements_type = set()
@@ -364,6 +410,7 @@ class HotspotFinder:
                                 hotspot_id_type,
                                 cohort,
                                 n_cohort_samples,
+                                n_cohort_mut,
                                 n_mut_samples,
                                 frac_mut_samples,
                                 muttype,
@@ -374,6 +421,8 @@ class HotspotFinder:
                                 trimer_sequence,
                                 pentamer_sequence,
                                 warning_flag,
+                                map_data,
+                                var_data,
                                 genomic_elements_specific,
                                 genomic_elements_type
                              ]
@@ -411,7 +460,7 @@ class HotspotFinder:
         logger.info('Hotspots identified')
 
         # Write info
-        self.write_raw_hotspots()
+        self.write_hotspots()
         logger.info('Hotspots saved to file')
 
 
@@ -428,7 +477,7 @@ class HotspotFinder:
               help='BGData SNPs data to use when no input regions file is provided')
 @click.option('-ireg', '--input-regions', default=None, required=False, type=click.Path(exists=True),
               help='User input file containing genomic elements annotations in TSV format')
-@click.option('-dreg', '--default-regions', default='cds', required=False,
+@click.option('-dreg', '--default-regions', default='all', required=False,
               type=click.Choice(['all', 'cds', '5utr', '3utr', 'proximal_promoters', 'distal_promoters', 'introns']),
               help='BGData genomic elements to use when no input regions file is provided')
 @click.option('-o', '--output-path', default=None, required=True, help='Output directory')
