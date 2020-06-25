@@ -125,11 +125,12 @@ class HotspotFinder:
                 'd': 'mut'
             }
 
-        self.cohort_total_mutations = defaultdict(int)
+        self.cohort_total_mutations = defaultdict(lambda: defaultdict(int))
         self.cohort_to_sample = defaultdict(set)
         self.cohort_to_mutation_counts = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
         self.cohort_to_mutation_alts = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
         self.hotspots = defaultdict(lambda: defaultdict(dict))
+        self.hotspots_samples = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
 
         #TODO refactor mutations as namedtuple so that we can check the REF in file with bgreference
 
@@ -178,11 +179,11 @@ class HotspotFinder:
                 extra=['GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE']
         ):
             chromosome = row['CHROMOSOME']
-            chr_position = str(row['POSITION'])
+            position = str(row['POSITION'])
             ref = row['REF']
             alt = row['ALT']
             sample = row['SAMPLE']
-            chr_pos = '{}_{}'.format(chromosome, chr_position)
+            chr_position = '{}_{}'.format(chromosome, position)
             # Identify group
             # If no group, hotspots are computed using the whole input file
             if not self.group_by:
@@ -192,7 +193,7 @@ class HotspotFinder:
             # Keep track of samples from each group
             self.cohort_to_sample[cohort].add(sample)
             # Keep track of how many mutations each group has
-            self.cohort_total_mutations[cohort] += 1
+            self.cohort_total_mutations['total'][cohort] += 1
 
             # Read mutations in autosomal + sexual chromosomes
             if chromosome in set(chromosomes):
@@ -200,17 +201,26 @@ class HotspotFinder:
                     # Read substitutions of any length
                     if ref != '-' and alt != '-':
                         if len(alt) == 1:
-                            substitutions_dict['snvs'][sample][chr_pos].append(alt)
+                            substitutions_dict['snvs'][sample][chr_position].append(alt)
+                            self.cohort_total_mutations['snv'][cohort] += 1
+                            self.hotspots_samples[cohort]['snv'][chr_position].add(sample)
                         else:
-                            substitutions_dict['mnvs'][sample][chr_pos].append(alt)
+                            substitutions_dict['mnvs'][sample][chr_position].append(alt)
+                            self.cohort_total_mutations['mnv'][cohort] += 1
+                            self.hotspots_samples[cohort]['mnv'][chr_position].add(sample)
+
                     # Read indels of any length
                     else:
                         # Insertions
                         if ref == '-':
-                            insertions_dict[sample][chr_pos].append(alt)
+                            insertions_dict[sample][chr_position].append(alt)
+                            self.cohort_total_mutations['ins'][cohort] += 1
+                            self.hotspots_samples[cohort]['ins'][chr_position].add(sample)
                         # Deletion
                         elif alt == '-':
-                            deletions_dict[sample][chr_pos].append(alt)
+                            deletions_dict[sample][chr_position].append(alt)
+                            self.cohort_total_mutations['del'][cohort] += 1
+                            self.hotspots_samples[cohort]['del'][chr_position].add(sample)
 
         for cohort, nmuts in self.cohort_total_mutations.items():
             logger.info(f'Input mutations in {cohort} = {nmuts}')
@@ -278,6 +288,7 @@ class HotspotFinder:
                                 ofd.write('{}\n'.format('\t'.join([
                                     chromosome, position, 'NA', ','.join(alts_simplified), sample, 'warning_3', 'True'
                                 ])))
+                                self.hotspots_samples[cohort][muttype][chr_position].discard(sample)
 
                     # Load non-warning positions
                     for chr_position, mutation in total_muts_in_sample.items():
@@ -299,6 +310,8 @@ class HotspotFinder:
             for muttype, mutated_positions in data.items():
                 self.hotspots[cohort][muttype] = {k: v for k, v in mutated_positions.items() if v >= self.hotspot_mutations}
 
+        #TODO remove keys from self.hotspots_samples
+
         logger.debug(self.hotspots)
 
     def write_hotspots(self):
@@ -316,7 +329,12 @@ class HotspotFinder:
             'ID_CHR_POS_TYPE',
             'COHORT',
             'N_COHORT_SAMPLES',
-            'N_COHORT_MUTATIONS',
+            'N_COHORT_MUTATIONS_TOTAL',
+            'N_COHORT_MUTATIONS_SNV',
+            'N_COHORT_MUTATIONS_MNV',
+            'N_COHORT_MUTATIONS_INS',
+            'N_COHORT_MUTATIONS_DEL',
+            'MUTATED_SAMPLES',
             'N_MUTATED_SAMPLES',
             'FRAC_MUTATED_SAMPLES',
             'MUT_TYPE',
@@ -340,12 +358,17 @@ class HotspotFinder:
             ofd.write('{}\n'.format('\t'.join(header)))
             for cohort, data in self.hotspots.items():
                 n_cohort_samples = len(self.cohort_to_sample[cohort])
-                n_cohort_mut = self.cohort_total_mutations[cohort]
+                n_cohort_mut_total = self.cohort_total_mutations['total'][cohort]
+                n_cohort_mut_snv = self.cohort_total_mutations['snv'][cohort]
+                n_cohort_mut_mnv = self.cohort_total_mutations['mnv'][cohort]
+                n_cohort_mut_ins = self.cohort_total_mutations['ins'][cohort]
+                n_cohort_mut_del = self.cohort_total_mutations['del'][cohort]
                 for muttype, hotspots in data.items():
                     for hotspot_id, n_mut_samples in sorted(hotspots.items(), key=lambda item: item[1], reverse=True):
                         hotspot_id_type = f'{hotspot_id}_{muttype}'
                         chromosome, position = hotspot_id.split('_')
                         frac_mut_samples = str(n_mut_samples / n_cohort_samples)
+                        mut_samples = ';'.join(sorted(list(self.hotspots_samples[cohort][muttype][hotspot_id])))
 
                         # Sequence info
                         pentamer_sequence = bgref.refseq(self.genome, chromosome, int(position) - 2, 5)
@@ -410,7 +433,12 @@ class HotspotFinder:
                                 hotspot_id_type,
                                 cohort,
                                 n_cohort_samples,
-                                n_cohort_mut,
+                                n_cohort_mut_total,
+                                n_cohort_mut_snv,
+                                n_cohort_mut_mnv,
+                                n_cohort_mut_ins,
+                                n_cohort_mut_del,
+                                mut_samples,
                                 n_mut_samples,
                                 frac_mut_samples,
                                 muttype,
