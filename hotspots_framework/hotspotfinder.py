@@ -123,7 +123,7 @@ class HotspotFinder:
                 next(fd)
                 for line in fd:
                     chrom, start, end, strand, gene_id, transcript_id, symbol = line.strip().split('\t')
-                    tree[chrom].addi(int(start), int(end) + 1, f'{symbol}::{gene_id}::{genomic_element}')  # +1 interval
+                    tree[chrom].addi(int(start), int(end) + 1, f'{symbol}::{gene_id}::{transcript_id}::{genomic_element}')  # +1 interval
 
         return tree
 
