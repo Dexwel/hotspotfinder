@@ -5,7 +5,6 @@ Hotspot Finder identifies mutational hotspots and generates basic annotations
 # Import modules
 from collections import defaultdict
 import gzip
-import json
 import logging
 import os
 import shutil
@@ -13,10 +12,12 @@ import shutil
 import bgdata
 import bgreference as bgref
 from bgparsers import readers
+import configparser
 import click
 import daiquiri
 from intervaltree import IntervalTree
 import tabix
+
 
 # Global variables
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -27,7 +28,7 @@ LOGS = {
     'error': logging.ERROR,
     'critical': logging.CRITICAL
 }
-
+configuration_file = 'hotspots_framework/hotspots_framework/hotspotfinder_v1.conf'
 
 class HotspotFinder:
     """Class to identify and annotate hotspots with basic information"""
@@ -474,41 +475,22 @@ class HotspotFinder:
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.option('-mut', '--input-mutations', default=None, required=True, type=click.Path(exists=True),
+@click.option('-i', '--input-mutations', default=None, required=True, type=click.Path(exists=True),
               help='User input file containing somatic mutations in TSV format')
-@click.option('-imap', '--input-mappability', default=None, required=False, type=click.Path(exists=True),
-              help='User input file containing mappability data')
-@click.option('-dmap', '--default-mappability', default='bgdata', required=False, type=click.Choice(['bgdata']),
-              help='BGData mappability data to use when no input regions file is provided')
-@click.option('-isnp', '--input-snps', default=None, required=False, type=click.Path(exists=True),
-              help='File containing SNPs data')
-@click.option('-dsnp', '--default-snps', default='bgdata', required=False, type=click.Choice(['bgdata']),
-              help='BGData SNPs data to use when no input regions file is provided')
-@click.option('-ireg', '--input-regions', default=None, required=False, type=click.Path(exists=True),
-              help='User input file containing genomic elements annotations in TSV format')
-@click.option('-dreg', '--default-regions', default='all', required=False,
-              type=click.Choice(['all', 'cds', '5utr', '3utr', 'proximal_promoters', 'distal_promoters', 'introns']),
-              help='BGData genomic elements to use when no input regions file is provided')
-@click.option('-o', '--output-path', default=None, required=True, help='Output directory')
-@click.option('-hmut', '--hotspot-mutations', type=click.IntRange(min=2, max=None, clamp=False), default=3,
+@click.option('-o', '--output-directory', default=None, required=True, help='Output directory')
+@click.option('-g', '--genome', default=None, type=click.Choice(['hg38']), help='Genome to use')
+@click.option('-cutoff', '--mutations-cutoff', type=click.IntRange(min=2, max=None, clamp=False), default=None,
               help='Cutoff of mutations to define a hotspot. Default is 3')
-@click.option('-g', '--genome', default='hg38', type=click.Choice(['hg38', 'hg19']), help='Genome to use')
 @click.option('-group', '--group-by', default=None, type=click.Choice(['GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE']),
               help='Header of the column to group hotspots identification')
-@click.option('-c', '--cores', type=click.IntRange(min=1, max=os.cpu_count(), clamp=False), default=os.cpu_count(),
+@click.option('-c', '--cores', type=click.IntRange(min=1, max=os.cpu_count(), clamp=False), default=None,
               help='Number of cores to use in the computation. By default it uses all available cores.')
 @click.option('--log-level', default='info', help='Verbosity of the logger',
               type=click.Choice(['debug', 'info', 'warning', 'error', 'critical']))
 def main(
         input_mutations,
-        input_mappability,
-        default_mappability,
-        input_snps,
-        default_snps,
-        input_regions,
-        default_regions,
-        output_path,
-        hotspot_mutations,
+        output_directory,
+        mutations_cutoff,
         genome,
         group_by,
         cores,
@@ -519,14 +501,8 @@ def main(
 
     Args:
         input_mutations (str): user path to input mutation data, required
-        input_mappability (str): user path to input mappability annotations, not required
-        default_mappability (str): BGData mappability data to analyze when no mappability file is provided by the user
-        input_snps (str): user path to input SNPs data, not required
-        default_snps (str): BGData SNPs data to analyze when no SNPs file is provided by the user
-        input_regions (str): user path to input regions or genomic elements annotations, not required
-        default_regions (str): BGData genomic elements to analyze when no input regions are provided by the user
-        output_path (str): path to output directory
-        hotspot_mutations (int): cutoff of mutations to define a hotspot
+        output_directory (str): path to output directory
+        mutations_cutoff (int): cutoff of mutations to define a hotspot
         genome (str): reference genome
         group_by (str): name of the column to group hotspots identification
         cores (int): number of cpu
@@ -541,37 +517,41 @@ def main(
     file_name = input_mutations.split('/')[-1].split('.')[0]
 
     # Output directories
-    if not os.path.exists(output_path):
-        os.makedirs(output_path, exist_ok=True)
+    if not os.path.exists(output_directory):
+        os.makedirs(output_directory, exist_ok=True)
 
     # Output file name
-    output_file_results = os.path.join(output_path, f'{file_name}.results.txt')
-    output_file_warning = os.path.join(output_path, f'{file_name}.warningpositions.txt')
+    output_file_results = os.path.join(output_directory, f'{file_name}.results.txt')
+    output_file_warning = os.path.join(output_directory, f'{file_name}.warningpositions.txt')
 
-    # Check if there are user input mappability, SNPs and regions data
-    # Otherwise, use default BGData information to annotate hotspots
-    if input_mappability:
-        default_mappability = None
-        mappability_file = input_mappability
+    # Read configuration file
+    config = configparser.ConfigParser()
+    if os.path.isfile(config.read(configuration_file)[0]):
+        if not genome:
+            genome = config['genome']['build']
+        if not mutations_cutoff:
+            mutations_cutoff = config['hotspot_mutations']['cutoff']
+        if not group_by:
+            group_by = config['group']['groupby']
+        mappable_regions = config['mappability']['mappable_regions']
+        blacklisted_regions = config['mappability']['blacklisted_regions']
+        population_variants = config['polymorphisms']['population_variants']
+        genomic_elements = config['genomic_regions']['genomic_elements']
+        remove_unnanotated_hotspots = config['genomic_regions']['remove_unnanotated_hotspots']
+        output_format = config['settings']['output_format']
+        gzip = config['settings']['gzip']
+        if not cores:
+            cores = config['settings']['cores']
     else:
-        mappability_file = default_mappability
-    if input_snps:
-        default_snps = None
-        snps_file = input_snps
-    else:
-        snps_file = default_snps
-    if input_regions:
-        default_regions = None
-        regions_file = input_regions
-    else:
-        regions_file = default_regions
+        raise ValueError('Configuration file not found. Please check configuration file.')
+    logger.info('Configuration file read')
 
     # Log
     daiquiri.setup(level=LOGS[log_level], outputs=(
         daiquiri.output.STDERR,
         daiquiri.output.File(
             filename=f'{file_name}.log',
-            directory=output_path
+            directory=output_directory
         )
     ))
     logger = daiquiri.getLogger()
@@ -581,26 +561,32 @@ def main(
     logger.info('\n'.join([
         '\n'
         f'* Input mutations file: {input_mutations}',
-        f'* Output results directory: {output_path}',
-        f'* User input mappability file: {input_mappability}',
-        f'* BGData mappability in use: {default_mappability}',
-        f'* User input SNPs file: {input_snps}',
-        f'* BGData SNPs in use: {default_snps}',
-        f'* User input regions file: {input_regions}',
-        f'* BGData regions in use: {default_regions}',
+        f'* Mapable regions file: {mappable_regions}',
+        f'* Blacklisted regions file: {blacklisted_regions}',
+        f'* Population variants file: {population_variants}',
+        f'* Genomic elements file: {genomic_elements}',
+        f'* Remove unnanotated hotspots: {remove_unnanotated_hotspots}',
+        f'* Output results directory: {output_directory}',
+        f'* Output format: {output_format}',
+        f'* GZIP compression: {gzip}',
+        f'* Cutoff hotspots mutations: {mutations_cutoff}'
         f'* Genome: {genome}',
-        f'* Cutoff hotspots mutations: {hotspot_mutations}'
+        f'* Group analysis by: {"None" if group_by == "" else group_by}',
+        f'* Cores: {cores}',
     ]))
 
     # Generate stage 1 hotspots (no annotations)
     experiment = HotspotFinder(
         input_mutations,
-        mappability_file,
-        snps_file,
-        regions_file,
+        mappable_regions,
+        blacklisted_regions,
+        population_variants,
+        genomic_elements,
+        remove_unnanotated_hotspots,
         output_file_results,
         output_file_warning,
-        hotspot_mutations,
+        output_format,
+        mutations_cutoff,
         genome,
         group_by,
         cores
