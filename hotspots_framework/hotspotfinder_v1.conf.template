@@ -1,0 +1,82 @@
+[genome]
+# Reference genome
+# Genomes supported in the current version: hg38
+build = 'hg38'
+
+
+[hotspot_mutations]
+# Minimum of the number of mutated samples to identify a hotspot
+# Hotspots must contain at least 2 mutated samples
+# By default, hotspots are defined as 3 mutated samples or more
+cutoff = 3
+
+
+[reference_nucleotides]
+# Reference nucleotide context can contain unknown nucleotides ('N')
+# By default, hotspots containing one 'N' in their tri- and/or penta-nucleotide
+# context are discarded
+remove_unknowns = True
+
+
+[group]
+# Identify hotspots in different groups of samples in the input mutations file
+# Column names to group samples are 'GROUP', 'GROUP_BY', 'COHORT' and 'CANCER_TYPE'
+# Uncomment the line below to identify hotspots based on column name 'GROUP'
+# groupby = 'GROUP'
+# By default, hotspots are computed grouping all samples in the input mutations file
+groupby = 'none'
+
+
+[alternates]
+# Compute hotspots per nucleotide alternate independently or merged
+# By default, hotspots merge different alternates
+split = False
+
+
+[mappability]
+# Read two files containing genome mappability data
+# Please, check that your files use the same reference genome used in this analysis
+# mappable_regions contains regions of high mappability in TSV format
+# By default, this regions are obtained from bgdata
+# Alternatively, you can provide a path to a file
+mappable_regions = 'bgdata'
+
+# blacklisted_regions contains artifact regions of low mappability
+# By default, this regions are obtained from bgdata
+# Alternatively, you can provide a path to a file
+blacklisted_regions = 'bgdata'
+
+
+[polymorphisms]
+# Read files containing population variants with allele frequency >= 1%
+# Please, check that your files use the same reference genome used in this analysis
+# By default, this regions are obtained from bgdata
+# Alternatively, you can provide a path to a directory containing one file per chromosome
+population_variants = 'bgdata'
+
+
+[genomic_regions]
+# Read a file with genomic regions annotations to annotate hotspots
+# By default, this regions are obtained from bgdata
+# Alternatively, you can provide a path to a file
+# If you want to annotate all regions in bgdata, please set the variable to 'all'
+# If you want to restrict the analysis to a single category, you can use
+# 'cds', '5utr', '3utr', 'proximal_promoters', 'distal_promoters', 'introns'
+# By default, all regions in bgdata are used:
+genomic_elements = 'all'
+
+# By default, hotspots not overlapping genomic elements are removed from the output file
+# Set variable to False if you want to keep these hotspots in the output file
+remove_nonannotated_hotspots = True
+
+
+[settings]
+# Format of output file: 'tsv' or 'vcf'
+output_format = 'tsv'
+
+# GZIP compression of output file
+gzip = True
+
+# Number of cores
+# Set to 'all' to use all available cores
+cores = 1

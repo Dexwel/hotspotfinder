@@ -7,12 +7,12 @@ from collections import defaultdict
 import gzip
 import logging
 import os
-import shutil
+import sys
 
+from bgconfig import BGConfig
 import bgdata
 import bgreference as bgref
 from bgparsers import readers
-import configparser
 import click
 import daiquiri
 from intervaltree import IntervalTree
@@ -28,53 +28,73 @@ LOGS = {
     'error': logging.ERROR,
     'critical': logging.CRITICAL
 }
-configuration_file = 'hotspots_framework/hotspots_framework/hotspotfinder_v1.conf'
+
+
+def load_configuration(config_file, override=None):
+    """
+    Load the configuration file and checks the format.
+
+    Args:
+        config_file: configuration file path
+
+    Returns:
+        :class:`bgconfig.BGConfig`: configuration as a :obj:`dict`
+
+    """
+    config_template = f'{config_file}.template'
+
+    try:
+        return BGConfig(config_template, config_file=config_file, use_env_vars=True, override_values=override, unrepr=False)
+    except ValueError as e:
+        logger.error(e)
+        sys.exit(-1)
 
 class HotspotFinder:
     """Class to identify and annotate hotspots with basic information"""
 
     def __init__(self,
                  input_file,
-                 mappability_data,
-                 variation_data,
+                 mappable_regions,
+                 blacklisted_regions,
+                 population_variants,
                  genomic_elements,
                  output_file_results,
                  output_file_warning,
+                 output_format,
+                 gzip,
                  hotspot_mutations,
+                 split_alternates,
+                 remove_unknown_nucleotides,
+                 remove_nonannotated_hotspots,
                  genome,
                  group_by,
                  cores
                  ):
         """
         Initialize HotspotFinder class
+
         Args:
             input_file (str): path to input mutations data
-            mappability_data (str): mappability data to insersect
-            variation_data (str): SNPs data to insersect
-            genomic_elements (str): regions or genomic elements data to intersect
+            mappable_regions (str): file with regions of high mappability
+            blacklisted_regions (str): file with artifact regions of low mappability
+            population_variants (str): file with polimorphisms data to insersect
+            genomic_elements (str): file with genomic elements data to intersect
             output_file_results (str): path to output file
             output_file_warning (str): path to genomic positions where warning is found
-            output_path_tmp (str): path to tmp directory
+            output_format (str): format of output file (TSV or VCF)
+            gzip (bool): GZIP output files
             hotspot_mutations (int): cutoff of mutations to define a hotspot
+            split_alternates (bool): compute hotspots per nucleotide alternate independently
+            remove_unknown_nucleotides (bool): remove hotspots with N nucleotides in their reference context
+            remove_nonannotated_hotspots (bool): remove hotspots not overlapping genomic elements
             genome (str): reference genome
             group_by (str): name of the column to group hotspots identification
             cores (int): number of cpu
 
         Returns:
             None
-        """
 
-        # Params
-        self.hotspot_mutations = hotspot_mutations
-        self.genome = genome
-        self.group_by = group_by
-        self.cores = cores
-        self.muttype_dict = {
-            's': 'snv',
-            'm': 'mnv',
-            'i': 'ins',
-            'd': 'del'
-        }
+        """
 
         # Input output files
         self.input_file = input_file
@@ -82,9 +102,12 @@ class HotspotFinder:
         self.output_file_hotspots = output_file_results
         self.output_file_warning = output_file_warning
 
-        self.mappability_file = '/workspace/projects/pileup_mappability/hg38/hg38_100bp.coverage.regions.gz'
-        self.blacklisted_regions_file = '/workspace/datasets/mappability_blacklists/hg38/ENCFF356LFX.bed.gz'
-        self.variation_directory = '/workspace/datasets/gnomad_2020/data/v3.0.0/hg38/af_0.01'
+        # Mappability data
+        self.mappable_regions_file = mappable_regions
+        self.blacklisted_regions_file = blacklisted_regions
+
+        # Variation data
+        self.variation_directory = population_variants
 
         # Genomic elements data
         self.genomic_elements = genomic_elements
@@ -98,6 +121,24 @@ class HotspotFinder:
             'introns'
         ]
 
+        # Params
+        self.output_format = output_format
+        self.gzip = gzip
+        self.hotspot_mutations = hotspot_mutations
+        self.split_alternates = split_alternates
+        self.remove_unknown_nucleotides = remove_unknown_nucleotides
+        self.remove_nonannotated_hotspots = remove_nonannotated_hotspots
+        self.genome = genome
+        self.group_by = group_by
+        self.cores = cores
+        self.muttype_dict = {
+            's': 'snv',
+            'm': 'mnv',
+            'i': 'ins',
+            'd': 'del'
+        }
+
+        # Initialize variables to load data
         self.cohort_total_mutations = defaultdict(lambda: defaultdict(int))
         self.cohort_to_sample = defaultdict(set)
         self.cohort_to_mutation_counts = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
@@ -105,7 +146,6 @@ class HotspotFinder:
         self.hotspots = defaultdict(lambda: defaultdict(dict))
         self.hotspots_samples = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
 
-        #TODO refactor mutations as namedtuple so that we can check the REF in file with bgreference
 
     @staticmethod
     def load_intervaltree(files):
@@ -144,6 +184,7 @@ class HotspotFinder:
         substitutions_dict = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
         insertions_dict = defaultdict(lambda: defaultdict(list))
         deletions_dict = defaultdict(lambda: defaultdict(list))
+        mutations_ref_nomatch = 0
 
         # Read mutations
         for row in readers.variants(
@@ -174,9 +215,14 @@ class HotspotFinder:
                     # Read substitutions of any length
                     if ref != '-' and alt != '-':
                         if len(alt) == 1:
-                            substitutions_dict['snvs'][sample][chr_position].append(alt)
-                            self.cohort_total_mutations['snv'][cohort] += 1
-                            self.hotspots_samples[cohort]['snv'][chr_position].add(sample)
+                            # Check reference
+                            if ref == bgref.refseq(self.genome, chromosome, int(position), 1):
+                                substitutions_dict['snvs'][sample][chr_position].append(alt)
+                                self.cohort_total_mutations['snv'][cohort] += 1
+                                self.hotspots_samples[cohort]['snv'][chr_position].add(sample)
+                            else:
+                                mutations_ref_nomatch += 1
+                                self.cohort_total_mutations['total'][cohort] -= 1
                         else:
                             substitutions_dict['mnvs'][sample][chr_position].append(alt)
                             self.cohort_total_mutations['mnv'][cohort] += 1
@@ -195,6 +241,10 @@ class HotspotFinder:
                             self.cohort_total_mutations['del'][cohort] += 1
                             self.hotspots_samples[cohort]['del'][chr_position].add(sample)
 
+        if mutations_ref_nomatch > 0:
+            logger.warning(f'A total of {mutations_ref_nomatch} SNVs REF nucleotides do not match the reference. '
+                           f'Mutations are discarded from analysis')
+
         for muttype, data in self.cohort_total_mutations.items():
             for cohort, nmuts in data.items():
                 logger.info(f'Input {muttype} mutations in {cohort} = {nmuts}')
@@ -204,6 +254,7 @@ class HotspotFinder:
         header = ['CHROMOSOME', 'POSITION', 'REF', 'ALT', 'SAMPLE', 'WARNING', 'SKIP']
         with open(self.output_file_warning, 'w') as ofd:
             ofd.write('{}\n'.format('\t'.join(header)))
+            warning_samples_n = 0
             for cohort, set_of_samples in self.cohort_to_sample.items():
                 for sample in set_of_samples:
                     snvs_in_sample = substitutions_dict['snvs'][sample]
@@ -228,6 +279,7 @@ class HotspotFinder:
 
                     self.warning_chr_position = set()
                     if warning_mutations:
+                        warning_samples_n += 1
                         # Load warning positions
                         for chr_position, alts in warning_mutations:
                             chromosome, position = chr_position.split('_')
@@ -235,7 +287,7 @@ class HotspotFinder:
                             alts_simplified = [a for a, muttype in alts]
                             self.warning_chr_position.add(chr_position)
                             if len(alts_unique) == 1:
-                                logger.warning(
+                                logger.debug(
                                     f'Sample "{sample}" position chr{chr_position} has 2 alternates: {alts_simplified}')
                                 alt, muttype = list(alts_unique)[0]
                                 self.cohort_to_mutation_alts[cohort][muttype][chr_position] += [alt]
@@ -245,7 +297,7 @@ class HotspotFinder:
                                     chromosome, position, 'NA', ','.join(alts_simplified), sample, 'warning_1', 'False'
                                 ])))
                             elif len(alts_unique) == 2:
-                                logger.warning(
+                                logger.debug(
                                     f'Sample "{sample}" position chr{chr_position} has 2 or 3 alternates: {alts_simplified}. '
                                     f'Mutation counts and alternates might not match.')
                                 ofd.write('{}\n'.format('\t'.join([
@@ -256,7 +308,7 @@ class HotspotFinder:
                                     self.cohort_to_mutation_alts[cohort][muttype][chr_position] += [alt]
                                     self.cohort_to_mutation_counts[cohort][muttype][chr_position] += 1
                             else:
-                                logger.warning(
+                                logger.debug(
                                     f'Sample "{sample}" position chr{chr_position} has 3 or more different alternates: '
                                     f'{alts_simplified}. Mutations are skipped from analysis')
                                 ofd.write('{}\n'.format('\t'.join([
@@ -270,8 +322,10 @@ class HotspotFinder:
                             self.cohort_to_mutation_alts[cohort][mutation[0][1]][chr_position] += [mutation[0][0]]
                             self.cohort_to_mutation_counts[cohort][mutation[0][1]][chr_position] += 1
 
-        # logger.debug(self.cohort_to_mutation_counts)
-        logger.debug(self.cohort_to_mutation_alts)
+        if warning_samples_n > 0:
+            logger.warning(f'A total of {warning_samples_n} samples '
+                           f'contain mutations flagged with warnings. Please check '
+                           f'{self.output_file_warning}')
 
     def find_hotspots(self):
         """
@@ -280,13 +334,26 @@ class HotspotFinder:
         Returns:
             None
         """
-        for cohort, data in self.cohort_to_mutation_counts.items():
-            for muttype, mutated_positions in data.items():
-                self.hotspots[cohort][muttype] = {k: v for k, v in mutated_positions.items() if v >= self.hotspot_mutations}
 
-        #TODO remove keys from self.hotspots_samples
-
-        logger.debug(self.hotspots)
+        if self.split_alternates is False:
+            for cohort, data in self.cohort_to_mutation_counts.items():
+                for muttype, mutated_positions in data.items():
+                    self.hotspots[cohort][muttype] = {k: v for k, v in mutated_positions.items() if
+                                                      v >= self.hotspot_mutations}
+        else:
+            for cohort, data in self.cohort_to_mutation_counts.items():
+                for muttype, mutated_positions in data.items():
+                    if muttype == 'snv':
+                        for hotspot_id, n_samples in mutated_positions.items():
+                            list_of_alternates = self.cohort_to_mutation_alts[cohort][muttype][hotspot_id]
+                            for alternate in set(list_of_alternates):
+                                count = list_of_alternates.count(alternate)
+                                if count >= self.hotspot_mutations:
+                                    self.hotspots[cohort][muttype][f'{hotspot_id}>{alternate}'] = count
+                                    self.cohort_to_mutation_alts[cohort][muttype][f'{hotspot_id}>{alternate}'] = [alternate] * count
+                    else:
+                        self.hotspots[cohort][muttype] = {k: v for k, v in mutated_positions.items() if
+                                                          v >= self.hotspot_mutations}
 
     def write_hotspots(self):
         """
@@ -325,8 +392,9 @@ class HotspotFinder:
             'GENOMIC_ELEMENTS_TYPE'
         ]
 
-        mappability_tb = tabix.open(self.mappability_file)
-        blacklist_tb = tabix.open(self.blacklisted_regions_file)
+        mappable_regions_tb = tabix.open(self.mappable_regions_file)
+        blacklisted_regions_tb = tabix.open(self.blacklisted_regions_file)
+        hotspot_count = 0
 
         with open(self.output_file_hotspots, 'w') as ofd:
             ofd.write('{}\n'.format('\t'.join(header)))
@@ -341,6 +409,7 @@ class HotspotFinder:
                     for hotspot_id, n_mut_samples in sorted(hotspots.items(), key=lambda item: item[1], reverse=True):
                         hotspot_id_type = f'{hotspot_id}_{muttype}'
                         chromosome, position = hotspot_id.split('_')
+                        position = position.split('>')[0] if '>' in position else position
                         frac_mut_samples = str(n_mut_samples / n_cohort_samples)
                         mut_samples = ';'.join(sorted(list(self.hotspots_samples[cohort][muttype][hotspot_id])))
 
@@ -348,6 +417,9 @@ class HotspotFinder:
                         pentamer_sequence = bgref.refseq(self.genome, chromosome, int(position) - 2, 5)
                         trimer_sequence = pentamer_sequence[1:4]
                         ref = pentamer_sequence[2]
+
+                        if self.remove_unknown_nucleotides and 'N' in trimer_sequence or 'N' in pentamer_sequence:
+                            break
 
                         # Alternates
                         list_of_alternates = self.cohort_to_mutation_alts[cohort][muttype][hotspot_id]
@@ -366,7 +438,7 @@ class HotspotFinder:
                         # Mappability
                         map_data = 'low (<0.9)'
                         try:
-                            for info in mappability_tb.query(f'chr{chromosome}', int(position), int(position)):
+                            for info in mappable_regions_tb.query(f'chr{chromosome}', int(position), int(position)):
                                 map_data = 'high (>=0.9)'
                                 break
                         except tabix.TabixError:
@@ -375,13 +447,14 @@ class HotspotFinder:
                         # Mappability blacklisted regions
                         blacklist_data = 'PASS'
                         try:
-                            for info in blacklist_tb.query(f'chr{chromosome}', int(position), int(position)):
+                            for info in blacklisted_regions_tb.query(f'chr{chromosome}', int(position), int(position)):
                                 blacklist_data = 'FAIL'
                                 break
                         except tabix.TabixError:
                             blacklist_data = 'PASS'
 
                         # Variation
+                        # TODO rename files so that there's no hardcoded info
                         variation_tb = tabix.open(f'{self.variation_directory}/gnomad.genomes.r3.0.sites.chr{chromosome}.af_0.01.tsv.gz')
                         var_data = 'PASS'
                         try:
@@ -406,38 +479,47 @@ class HotspotFinder:
                             genomic_elements_specific = 'None'
                             genomic_elements_type = 'None'
 
-                        # Write
-                        ofd.write('{}\n'.format('\t'.join(list(map(str,
-                            [
-                                chromosome,
-                                position,
-                                hotspot_id,
-                                hotspot_id_type,
-                                cohort,
-                                n_cohort_samples,
-                                n_cohort_mut_total,
-                                n_cohort_mut_snv,
-                                n_cohort_mut_mnv,
-                                n_cohort_mut_ins,
-                                n_cohort_mut_del,
-                                mut_samples,
-                                n_mut_samples,
-                                frac_mut_samples,
-                                muttype,
-                                ref,
-                                alternates_counts,
-                                alternates_fractions,
-                                trimer_sequence,
-                                pentamer_sequence,
-                                warning_flag,
-                                map_data,
-                                blacklist_data,
-                                var_data,
-                                genomic_elements_specific,
-                                genomic_elements_type
-                             ]
+                        # Merge data
+                        data_to_write = list(map(str,
+                                 [
+                                     chromosome,
+                                     position,
+                                     hotspot_id,
+                                     hotspot_id_type,
+                                     cohort,
+                                     n_cohort_samples,
+                                     n_cohort_mut_total,
+                                     n_cohort_mut_snv,
+                                     n_cohort_mut_mnv,
+                                     n_cohort_mut_ins,
+                                     n_cohort_mut_del,
+                                     mut_samples,
+                                     n_mut_samples,
+                                     frac_mut_samples,
+                                     muttype,
+                                     ref,
+                                     alternates_counts,
+                                     alternates_fractions,
+                                     trimer_sequence,
+                                     pentamer_sequence,
+                                     warning_flag,
+                                     map_data,
+                                     blacklist_data,
+                                     var_data,
+                                     genomic_elements_specific,
+                                     genomic_elements_type
+                                 ]))
 
-                        )))))
+                        # Write
+                        if self.remove_nonannotated_hotspots is True:
+                            if genomic_elements_specific != 'None':
+                                ofd.write('{}\n'.format('\t'.join(data_to_write)))
+                                hotspot_count += 1
+                        else:
+                            ofd.write('{}\n'.format('\t'.join(data_to_write)))
+                            hotspot_count += 1
+
+        logger.info(f'Total hotspots identified: {hotspot_count}')
 
     def run(self):
         """
@@ -455,7 +537,7 @@ class HotspotFinder:
         # Load genomic elements into IntervalTree
         regions_data = []
         if os.path.isfile(self.genomic_elements):
-            regions_data += [('USER_REGIONS', self.genomic_elements)]
+            regions_data += [('regions', self.genomic_elements)]
         elif self.genomic_elements == 'all':
             for genomic_element in self.genomic_elements_names:
                 regions_data += [(genomic_element, bgdata.get(f'genomicregions/{self.genome}/{genomic_element}'))]
@@ -470,7 +552,15 @@ class HotspotFinder:
         logger.info('Hotspots identified')
 
         # Write info
+        # TODO implement VCF output
         self.write_hotspots()
+        if self.gzip:
+            with open(self.output_file_hotspots, 'rb') as f_in, gzip.open(f'{self.output_file_hotspots}.gz', 'wb') as f_out:
+                f_out.writelines(f_in)
+            os.remove(self.output_file_hotspots)
+            with open(self.output_file_warning, 'rb') as f_in, gzip.open(f'{self.output_file_warning}.gz', 'wb') as f_out:
+                f_out.writelines(f_in)
+            os.remove(self.output_file_warning)
         logger.info('Hotspots saved to file')
 
 
@@ -524,28 +614,6 @@ def main(
     output_file_results = os.path.join(output_directory, f'{file_name}.results.txt')
     output_file_warning = os.path.join(output_directory, f'{file_name}.warningpositions.txt')
 
-    # Read configuration file
-    config = configparser.ConfigParser()
-    if os.path.isfile(config.read(configuration_file)[0]):
-        if not genome:
-            genome = config['genome']['build']
-        if not mutations_cutoff:
-            mutations_cutoff = config['hotspot_mutations']['cutoff']
-        if not group_by:
-            group_by = config['group']['groupby']
-        mappable_regions = config['mappability']['mappable_regions']
-        blacklisted_regions = config['mappability']['blacklisted_regions']
-        population_variants = config['polymorphisms']['population_variants']
-        genomic_elements = config['genomic_regions']['genomic_elements']
-        remove_unnanotated_hotspots = config['genomic_regions']['remove_unnanotated_hotspots']
-        output_format = config['settings']['output_format']
-        gzip = config['settings']['gzip']
-        if not cores:
-            cores = config['settings']['cores']
-    else:
-        raise ValueError('Configuration file not found. Please check configuration file.')
-    logger.info('Configuration file read')
-
     # Log
     daiquiri.setup(level=LOGS[log_level], outputs=(
         daiquiri.output.STDERR,
@@ -555,25 +623,101 @@ def main(
         )
     ))
     logger = daiquiri.getLogger()
-
     logger.info('HotspotFinder')
     logger.info('Initializing HotspotFinder...')
+
+    # Read configuration file
+    configuration_file = 'hotspots_framework/hotspots_framework/hotspotfinder_v1.conf'
+    config = load_configuration(config_file=configuration_file)
+
+    # Use configuration file parameters when they are not provided by the command line
+    if not genome:
+        genome = config['genome']['build']
+    if not mutations_cutoff:
+        mutations_cutoff = config['hotspot_mutations']['cutoff']
+    if not group_by:
+        group_by = config['group']['groupby']
+    if not cores:
+        cores = config['settings']['cores']
+        if cores > os.cpu_count():
+            cores = os.cpu_count()
+            logger.warning('Input cores greater than maximum CPU cores. Using maximum CPU cores instead')
+
+    # Mappability
+    if os.path.isfile(config['mappability']['mappable_regions']):
+        mappable_regions = config['mappability']['mappable_regions']
+    else:
+        if config['mappability']['mappable_regions'] == 'bgdata':
+            # TODO add bgdata
+            logger.error(f"bgdata mappable regions file is not available")
+            sys.exit(-1)
+        else:
+            logger.error(f"Mappable regions file does not exist: {config['mappability']['mappable_regions']}")
+            sys.exit(-1)
+    if os.path.isfile(config['mappability']['blacklisted_regions']):
+        blacklisted_regions = config['mappability']['blacklisted_regions']
+    else:
+        if config['mappability']['blacklisted_regions'] == 'bgdata':
+            # TODO add bgdata
+            logger.error(f"bgdata blacklisted regions file is not available")
+            sys.exit(-1)
+        else:
+            logger.error(f"Blacklisted regions file does not exist: {config['mappability']['blacklisted_regions']}")
+            sys.exit(-1)
+
+    # Population variants
+    if os.path.isdir(config['polymorphisms']['population_variants']):
+        population_variants = config['polymorphisms']['population_variants']
+    else:
+        if config['polymorphisms']['population_variants'] == 'bgdata':
+            # TODO add bgdata
+            logger.error(f"bgdata population variants info is not available")
+            sys.exit(-1)
+        else:
+            logger.error(f"Population variants file does not exist: {config['polymorphisms']['population_variants']}")
+            sys.exit(-1)
+
+    # Genomic elements
+    if os.path.isfile(config['genomic_regions']['genomic_elements']):
+        genomic_elements = config['genomic_regions']['genomic_elements']
+    else:
+        if config['genomic_regions']['genomic_elements'] in {'cds', '5utr', '3utr', 'proximal_promoters',
+                                                            'distal_promoters', 'introns'}:
+            genomic_elements = config['genomic_regions']['genomic_elements']
+        else:
+            logger.error(f"Genomic regions file does not exist: {config['genomic_regions']['genomic_elements']}")
+            sys.exit(-1)
+
+    # Extra parameters
+    remove_unknown_nucleotides = config['reference_nucleotides']['remove_unknowns']
+    remove_nonannotated_hotspots = config['genomic_regions']['remove_nonannotated_hotspots']
+    split_alternates = config['alternates']['split']
+    output_format = config['settings']['output_format']
+    gzip = config['settings']['gzip']
+
+    logger.info('Analysis parameters loaded')
+
     logger.info('\n'.join([
         '\n'
         f'* Input mutations file: {input_mutations}',
         f'* Mapable regions file: {mappable_regions}',
         f'* Blacklisted regions file: {blacklisted_regions}',
-        f'* Population variants file: {population_variants}',
+        f'* Population variants directory: {population_variants}',
         f'* Genomic elements file: {genomic_elements}',
-        f'* Remove unnanotated hotspots: {remove_unnanotated_hotspots}',
         f'* Output results directory: {output_directory}',
         f'* Output format: {output_format}',
         f'* GZIP compression: {gzip}',
-        f'* Cutoff hotspots mutations: {mutations_cutoff}'
+        f'* Cutoff hotspots mutations: {mutations_cutoff}',
+        f'* Hotspots split alternates: {split_alternates}',
+        f'* Remove unknown nucleotides: {remove_unknown_nucleotides}',
+        f'* Remove nonannotated hotspots: {remove_nonannotated_hotspots}',
         f'* Genome: {genome}',
-        f'* Group analysis by: {"None" if group_by == "" else group_by}',
+        f'* Group analysis by: {group_by}',
         f'* Cores: {cores}',
     ]))
+
+    # Suppress log messages from some libraries
+    daiquiri.getLogger('bgdata').setLevel(logging.WARNING)
 
     # Generate stage 1 hotspots (no annotations)
     experiment = HotspotFinder(
@@ -582,13 +726,16 @@ def main(
         blacklisted_regions,
         population_variants,
         genomic_elements,
-        remove_unnanotated_hotspots,
         output_file_results,
         output_file_warning,
         output_format,
+        gzip,
         mutations_cutoff,
+        split_alternates,
+        remove_unknown_nucleotides,
+        remove_nonannotated_hotspots,
         genome,
-        group_by,
+        '' if group_by == 'none' else group_by,
         cores
     )
 
