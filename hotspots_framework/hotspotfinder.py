@@ -627,7 +627,7 @@ def main(
     logger.info('Initializing HotspotFinder...')
 
     # Read configuration file
-    configuration_file = 'hotspots_framework/hotspots_framework/hotspotfinder_v1.conf'
+    configuration_file = './hotspotfinder_v1.conf'
     config = load_configuration(config_file=configuration_file)
 
     # Use configuration file parameters when they are not provided by the command line
