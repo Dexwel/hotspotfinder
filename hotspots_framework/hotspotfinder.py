@@ -20,6 +20,7 @@ import tabix
 
 
 # Global variables
+VERSION = '0.1.0'
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 LOGS = {
     'debug': logging.DEBUG,
@@ -627,7 +628,7 @@ def main(
     logger.info('Initializing HotspotFinder...')
 
     # Read configuration file
-    configuration_file = './hotspotfinder_v1.conf'
+    configuration_file = f'./hotspotfinder_v{VERSION}.conf'
     config = load_configuration(config_file=configuration_file)
 
     # Use configuration file parameters when they are not provided by the command line
