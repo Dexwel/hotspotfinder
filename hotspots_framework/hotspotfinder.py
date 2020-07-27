@@ -576,6 +576,8 @@ class HotspotFinder:
               help='Header of the column to group hotspots identification')
 @click.option('-c', '--cores', type=click.IntRange(min=1, max=os.cpu_count(), clamp=False), default=None,
               help='Number of cores to use in the computation. By default it uses all available cores.')
+@click.option('-conf', '--configuration-file', default=None, required=True, type=click.Path(exists=True),
+              help='User input configuration file')
 @click.option('--log-level', default='info', help='Verbosity of the logger',
               type=click.Choice(['debug', 'info', 'warning', 'error', 'critical']))
 def main(
@@ -585,6 +587,7 @@ def main(
         genome,
         group_by,
         cores,
+        configuration_file,
         log_level
 ):
     """
@@ -597,6 +600,7 @@ def main(
         genome (str): reference genome
         group_by (str): name of the column to group hotspots identification
         cores (int): number of cpu
+        configuration_file (str): path to configuration file
         log_level (str): logger verbosity
 
     Returns:
@@ -628,7 +632,6 @@ def main(
     logger.info('Initializing HotspotFinder...')
 
     # Read configuration file
-    configuration_file = f'./hotspotfinder_v{VERSION}.conf'
     config = load_configuration(config_file=configuration_file)
 
     # Use configuration file parameters when they are not provided by the command line
