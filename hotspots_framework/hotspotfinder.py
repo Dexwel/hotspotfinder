@@ -685,7 +685,7 @@ def main(
     if os.path.isfile(config['genomic_regions']['genomic_elements']):
         genomic_elements = config['genomic_regions']['genomic_elements']
     else:
-        if config['genomic_regions']['genomic_elements'] in {'cds', '5utr', '3utr', 'proximal_promoters',
+        if config['genomic_regions']['genomic_elements'] in {'all', 'cds', '5utr', '3utr', 'proximal_promoters',
                                                             'distal_promoters', 'introns'}:
             genomic_elements = config['genomic_regions']['genomic_elements']
         else:
