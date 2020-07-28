@@ -8,7 +8,7 @@ cutoff = integer(default=3)
 remove_unknowns = boolean(default=True)
 
 [group]
-groupby = option('none', 'GROUP', 'GROUP_BY', 'COHORT' and 'CANCER_TYPE' default='none')
+groupby = option('none', 'GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE', 'PLATFORM', default='none')
 
 [alternates]
 split = boolean(default=False)

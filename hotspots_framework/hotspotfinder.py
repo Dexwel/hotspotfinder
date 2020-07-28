@@ -191,7 +191,7 @@ class HotspotFinder:
         for row in readers.variants(
                 file=self.input_file,
                 required=['CHROMOSOME', 'POSITION', 'REF', 'ALT', 'SAMPLE'],
-                extra=['GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE']
+                extra=['GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE', 'PLATFORM']
         ):
             chromosome = row['CHROMOSOME']
             position = str(row['POSITION'])
@@ -572,7 +572,7 @@ class HotspotFinder:
 @click.option('-g', '--genome', default=None, type=click.Choice(['hg38']), help='Genome to use')
 @click.option('-cutoff', '--mutations-cutoff', type=click.IntRange(min=2, max=None, clamp=False), default=None,
               help='Cutoff of mutations to define a hotspot. Default is 3')
-@click.option('-group', '--group-by', default=None, type=click.Choice(['GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE']),
+@click.option('-group', '--group-by', default=None, type=click.Choice(['GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE', 'PLATFORM']),
               help='Header of the column to group hotspots identification')
 @click.option('-c', '--cores', type=click.IntRange(min=1, max=os.cpu_count(), clamp=False), default=None,
               help='Number of cores to use in the computation. By default it uses all available cores.')

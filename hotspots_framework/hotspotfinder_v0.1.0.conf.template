@@ -20,7 +20,7 @@ remove_unknowns = True
 
 [group]
 # Identify hotspots in different groups of samples in the input mutations file
-# Column names to group samples are 'GROUP', 'GROUP_BY', 'COHORT' and 'CANCER_TYPE'
+# Column names to group samples are 'GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE' and 'PLATFORM'
 # Uncomment the line below to identify hotspots based on column name 'GROUP'
 # groupby = 'GROUP'
 # By default, hotspots are computed grouping all samples in the input mutations file
