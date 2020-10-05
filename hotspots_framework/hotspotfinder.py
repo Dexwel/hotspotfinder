@@ -62,7 +62,7 @@ class HotspotFinder:
                  output_file_results,
                  output_file_warning,
                  output_format,
-                 gzip,
+                 is_gzip,
                  hotspot_mutations,
                  split_alternates,
                  remove_unknown_nucleotides,
@@ -83,7 +83,7 @@ class HotspotFinder:
             output_file_results (str): path to output file
             output_file_warning (str): path to genomic positions where warning is found
             output_format (str): format of output file (TSV or VCF)
-            gzip (bool): GZIP output files
+            is_gzip (bool): GZIP output files
             hotspot_mutations (int): cutoff of mutations to define a hotspot
             split_alternates (bool): compute hotspots per nucleotide alternate independently
             remove_unknown_nucleotides (bool): remove hotspots with N nucleotides in their reference context
@@ -124,7 +124,8 @@ class HotspotFinder:
 
         # Params
         self.output_format = output_format
-        self.gzip = gzip
+        self.open_function = gzip.open if is_gzip else open
+        self.write_mode = 'wt' if is_gzip else 'w'
         self.hotspot_mutations = hotspot_mutations
         self.split_alternates = split_alternates
         self.remove_unknown_nucleotides = remove_unknown_nucleotides
@@ -253,7 +254,7 @@ class HotspotFinder:
         # Check mutations per sample and add to cohort_to_mutation dicts
         # Write warning positions
         header = ['CHROMOSOME', 'POSITION', 'REF', 'ALT', 'SAMPLE', 'WARNING', 'SKIP']
-        with open(self.output_file_warning, 'w') as ofd:
+        with self.open_function(self.output_file_warning, self.write_mode) as ofd:
             ofd.write('{}\n'.format('\t'.join(header)))
             warning_samples_n = 0
             for cohort, set_of_samples in self.cohort_to_sample.items():
@@ -397,7 +398,7 @@ class HotspotFinder:
         blacklisted_regions_tb = tabix.open(self.blacklisted_regions_file)
         hotspot_count = 0
 
-        with open(self.output_file_hotspots, 'w') as ofd:
+        with self.open_function(self.output_file_hotspots, self.write_mode) as ofd:
             ofd.write('{}\n'.format('\t'.join(header)))
             for cohort, data in self.hotspots.items():
                 n_cohort_samples = len(self.cohort_to_sample[cohort])
@@ -555,13 +556,6 @@ class HotspotFinder:
         # Write info
         # TODO implement VCF output
         self.write_hotspots()
-        if self.gzip:
-            with open(self.output_file_hotspots, 'rb') as f_in, gzip.open(f'{self.output_file_hotspots}.gz', 'wb') as f_out:
-                f_out.writelines(f_in)
-            os.remove(self.output_file_hotspots)
-            with open(self.output_file_warning, 'rb') as f_in, gzip.open(f'{self.output_file_warning}.gz', 'wb') as f_out:
-                f_out.writelines(f_in)
-            os.remove(self.output_file_warning)
         logger.info('Hotspots saved to file')
 
 
@@ -576,7 +570,7 @@ class HotspotFinder:
               help='Header of the column to group hotspots identification')
 @click.option('-c', '--cores', type=click.IntRange(min=1, max=os.cpu_count(), clamp=False), default=None,
               help='Number of cores to use in the computation. By default it uses all available cores.')
-@click.option('-conf', '--configuration-file', default=None, required=True, type=click.Path(exists=True),
+@click.option('-conf', '--configuration-file', default='./hotspotfinder_v0.1.0.conf', required=False, type=click.Path(exists=True),
               help='User input configuration file')
 @click.option('--log-level', default='info', help='Verbosity of the logger',
               type=click.Choice(['debug', 'info', 'warning', 'error', 'critical']))
@@ -595,7 +589,7 @@ def main(
 
     Args:
         input_mutations (str): user path to input mutation data, required
-        output_directory (str): path to output directory
+        output_directory (str): path to output directory, required
         mutations_cutoff (int): cutoff of mutations to define a hotspot
         genome (str): reference genome
         group_by (str): name of the column to group hotspots identification
@@ -614,10 +608,6 @@ def main(
     # Output directories
     if not os.path.exists(output_directory):
         os.makedirs(output_directory, exist_ok=True)
-
-    # Output file name
-    output_file_results = os.path.join(output_directory, f'{file_name}.results.txt')
-    output_file_warning = os.path.join(output_directory, f'{file_name}.warningpositions.txt')
 
     # Log
     daiquiri.setup(level=LOGS[log_level], outputs=(
@@ -697,7 +687,12 @@ def main(
     remove_nonannotated_hotspots = config['genomic_regions']['remove_nonannotated_hotspots']
     split_alternates = config['alternates']['split']
     output_format = config['settings']['output_format']
-    gzip = config['settings']['gzip']
+    is_gzip = config['settings']['gzip']
+
+    # Output file names
+    compression = '.gz' if is_gzip else ''
+    output_file_results = os.path.join(output_directory, f'{file_name}.results.txt{compression}')
+    output_file_warning = os.path.join(output_directory, f'{file_name}.warningpositions.txt{compression}')
 
     logger.info('Analysis parameters loaded')
 
@@ -710,7 +705,7 @@ def main(
         f'* Genomic elements file: {genomic_elements}',
         f'* Output results directory: {output_directory}',
         f'* Output format: {output_format}',
-        f'* GZIP compression: {gzip}',
+        f'* GZIP compression: {is_gzip}',
         f'* Cutoff hotspots mutations: {mutations_cutoff}',
         f'* Hotspots split alternates: {split_alternates}',
         f'* Remove unknown nucleotides: {remove_unknown_nucleotides}',
@@ -733,7 +728,7 @@ def main(
         output_file_results,
         output_file_warning,
         output_format,
-        gzip,
+        is_gzip,
         mutations_cutoff,
         split_alternates,
         remove_unknown_nucleotides,
