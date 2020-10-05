@@ -11,6 +11,13 @@ build = 'hg38'
 cutoff = 3
 
 
+[reference_nucleotides]
+# Reference nucleotide context can contain unknown nucleotides ('N')
+# By default, hotspots containing one 'N' in their tri- and/or penta-nucleotide
+# context are discarded
+remove_unknowns = True
+
+
 [group]
 # Identify hotspots in different groups of samples in the input mutations file
 # Column names to group samples are 'GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE' and 'PLATFORM'
