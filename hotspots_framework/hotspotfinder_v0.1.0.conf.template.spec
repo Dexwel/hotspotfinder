@@ -22,7 +22,7 @@ population_variants = string(default='bgdata')
 
 [genomic_regions]
 genomic_elements = string(default='all')
-remove_unnanotated_hotspots = boolean(default=False)
+remove_nonannotated_hotspots = boolean(default=True)
 
 [settings]
 output_format = option('tsv', 'vcf', default='tsv')
