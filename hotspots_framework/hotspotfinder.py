@@ -65,7 +65,6 @@ class HotspotFinder:
                  is_gzip,
                  hotspot_mutations,
                  split_alternates,
-                 remove_unknown_nucleotides,
                  remove_nonannotated_hotspots,
                  genome,
                  group_by,
@@ -86,7 +85,6 @@ class HotspotFinder:
             is_gzip (bool): GZIP output files
             hotspot_mutations (int): cutoff of mutations to define a hotspot
             split_alternates (bool): compute hotspots per nucleotide alternate independently
-            remove_unknown_nucleotides (bool): remove hotspots with N nucleotides in their reference context
             remove_nonannotated_hotspots (bool): remove hotspots not overlapping genomic elements
             genome (str): reference genome
             group_by (str): name of the column to group hotspots identification
@@ -128,7 +126,6 @@ class HotspotFinder:
         self.write_mode = 'wt' if is_gzip else 'w'
         self.hotspot_mutations = hotspot_mutations
         self.split_alternates = split_alternates
-        self.remove_unknown_nucleotides = remove_unknown_nucleotides
         self.remove_nonannotated_hotspots = remove_nonannotated_hotspots
         self.genome = genome
         self.group_by = group_by
@@ -683,7 +680,6 @@ def main(
             sys.exit(-1)
 
     # Extra parameters
-    remove_unknown_nucleotides = config['reference_nucleotides']['remove_unknowns']
     remove_nonannotated_hotspots = config['genomic_regions']['remove_nonannotated_hotspots']
     split_alternates = config['alternates']['split']
     output_format = config['settings']['output_format']
@@ -708,7 +704,6 @@ def main(
         f'* GZIP compression: {is_gzip}',
         f'* Cutoff hotspots mutations: {mutations_cutoff}',
         f'* Hotspots split alternates: {split_alternates}',
-        f'* Remove unknown nucleotides: {remove_unknown_nucleotides}',
         f'* Remove nonannotated hotspots: {remove_nonannotated_hotspots}',
         f'* Genome: {genome}',
         f'* Group analysis by: {group_by}',
@@ -731,7 +726,6 @@ def main(
         is_gzip,
         mutations_cutoff,
         split_alternates,
-        remove_unknown_nucleotides,
         remove_nonannotated_hotspots,
         genome,
         '' if group_by == 'none' else group_by,

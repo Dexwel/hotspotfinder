@@ -4,9 +4,6 @@ build = string(default='hg38')
 [hotspot_mutations]
 cutoff = integer(default=3)
 
-[reference_nucleotides]
-remove_unknowns = boolean(default=True)
-
 [group]
 groupby = option('none', 'GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE', 'PLATFORM', default='none')
 

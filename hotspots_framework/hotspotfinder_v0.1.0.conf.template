@@ -5,17 +5,10 @@ build = 'hg38'
 
 
 [hotspot_mutations]
-# Minimum of the number of mutated samples to identify a hotspot
-# Hotspots must contain at least 2 mutated samples
+# Minimum number of mutated samples to identify a hotspot
+# By definition, hotspots contain at least 2 mutated samples
 # By default, hotspots are defined as 3 mutated samples or more
 cutoff = 3
-
-
-[reference_nucleotides]
-# Reference nucleotide context can contain unknown nucleotides ('N')
-# By default, hotspots containing one 'N' in their tri- and/or penta-nucleotide
-# context are discarded
-remove_unknowns = True
 
 
 [group]
@@ -23,7 +16,7 @@ remove_unknowns = True
 # Column names to group samples are 'GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE' and 'PLATFORM'
 # Uncomment the line below to identify hotspots based on column name 'GROUP'
 # groupby = 'GROUP'
-# By default, hotspots are computed grouping all samples in the input mutations file
+# By default, hotspots are computed using all samples in the input mutations file
 groupby = 'none'
 
 
