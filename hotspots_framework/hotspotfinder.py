@@ -279,58 +279,64 @@ class HotspotFinder:
                         for chr_pos, alts in self.mutations_dict[muttype][sample].items():
                             total_muts_in_sample[chr_pos] += [(a, muttype) for a in alts]
                     # Warning mutations, when there's more than one alternate in the same position
-                    warning_mutations = [(k, v) for k, v in total_muts_in_sample.items() if len(v) > 1]
-
-                    logger.debug(sample)
-                    logger.debug(total_muts_in_sample)
-                    logger.debug(warning_mutations)
-
+                    warning_mutations = [(chr_pos, list_alts) for chr_pos, list_alts in total_muts_in_sample.items() if
+                                         len(list_alts) > 1]
                     if warning_mutations:
                         warning_samples_n += 1
-                        # Load warning positions
-                        for chr_position, alts in warning_mutations:
-                            chromosome, position = chr_position.split('_')
-                            alts_unique = set(alts)
-                            alts_simplified = [a for a, muttype in alts]
-                            self.warning_chr_position.add(chr_position)
-                            if len(alts_unique) == 1:
-                                logger.debug(
-                                    f'Sample "{sample}" position chr{chr_position} has 2 alternates: {alts_simplified}')
-                                alt, muttype = list(alts_unique)[0]
+                    unique_mutations = [(chr_pos, list_alts) for chr_pos, list_alts in total_muts_in_sample.items() if
+                                         len(list_alts) == 1]
+
+                    # Load warning positions
+                    for chr_position, alts in warning_mutations:
+                        chromosome, position = chr_position.split('_')
+                        alts_unique = set(alts)
+                        alts_simplified = [a for a, muttype in alts]
+                        self.warning_chr_position.add(chr_position)
+                        if len(alts_unique) == 1:
+                            logger.debug(
+                                f'Sample "{sample}" position chr{chr_position} has 2 repeated alternates: '
+                                f'{alts_simplified}.'
+                                f'Number of mutations and number of mutated samples will not match.'
+                            )
+                            alt, muttype = list(alts_unique)[0]
+                            self.cohort_to_mutation_alts[cohort][muttype][f'{chr_position}_{muttype}'] += [alt, alt]
+                            self.cohort_to_mutation_counts[cohort][muttype][f'{chr_position}_{muttype}'] += 2
+                            reference_n = bgref.refseq(self.genome, chromosome, int(position), 1)
+                            ofd.write('{}\n'.format('\t'.join([
+                                chromosome, position, reference_n, ','.join(alts_simplified),
+                                sample, 'warning_1', 'False'
+                            ])))
+                        elif len(alts_unique) == 2:
+                            logger.debug(
+                                f'Sample "{sample}" position chr{chr_position} has 2 different alternates: '
+                                f'{alts_simplified}.'
+                                f'Number of mutations and number of mutated samples will not match.'
+                            )
+                            reference_n = bgref.refseq(self.genome, chromosome, int(position), 1)
+                            ofd.write('{}\n'.format('\t'.join([
+                                chromosome, position, reference_n, ','.join(alts_simplified),
+                                sample, 'warning_2', 'False'
+                            ])))
+                            for mutation in alts_unique:
+                                alt, muttype = mutation
                                 self.cohort_to_mutation_alts[cohort][muttype][f'{chr_position}_{muttype}'] += [alt]
                                 self.cohort_to_mutation_counts[cohort][muttype][f'{chr_position}_{muttype}'] += 1
-                                reference_n = bgref.refseq(self.genome, chromosome, int(position), 1)
-                                ofd.write('{}\n'.format('\t'.join([
-                                    chromosome, position, reference_n, ','.join(alts_simplified), sample, 'warning_1', 'False'
-                                ])))
-                            elif len(alts_unique) == 2:
-                                logger.debug(
-                                    f'Sample "{sample}" position chr{chr_position} has 2 or 3 alternates: {alts_simplified}. '
-                                    f'Number of mutations and number of mutated samples will not match.')
-                                reference_n = bgref.refseq(self.genome, chromosome, int(position), 1)
-                                ofd.write('{}\n'.format('\t'.join([
-                                    chromosome, position, reference_n, ','.join(alts_simplified), sample, 'warning_2', 'False'
-                                ])))
-                                for mutation in alts_unique:
-                                    alt, muttype = mutation
-                                    self.cohort_to_mutation_alts[cohort][muttype][f'{chr_position}_{muttype}'] += [alt]
-                                    self.cohort_to_mutation_counts[cohort][muttype][f'{chr_position}_{muttype}'] += 1
-                            else:
-                                logger.debug(
-                                    f'Sample "{sample}" position chr{chr_position} has 3 or more different alternates: '
-                                    f'{alts_simplified}. Mutations are skipped from analysis')
-                                reference_n = bgref.refseq(self.genome, chromosome, int(position), 1)
-                                ofd.write('{}\n'.format('\t'.join([
-                                    chromosome, position, reference_n, ','.join(alts_simplified), sample, 'warning_3', 'True'
-                                ])))
-                                self.hotspots_samples[cohort][muttype][chr_position].discard(sample)
+                        else:
+                            logger.debug(
+                                f'Sample "{sample}" position chr{chr_position} has 3 or more different alternates: '
+                                f'{alts_simplified}. Mutations are skipped from analysis')
+                            reference_n = bgref.refseq(self.genome, chromosome, int(position), 1)
+                            ofd.write('{}\n'.format('\t'.join([
+                                chromosome, position, reference_n, ','.join(alts_simplified),
+                                sample, 'warning_3', 'True'
+                            ])))
+                            self.hotspots_samples[cohort][muttype][chr_position].discard(sample)
 
-                    # Load non-warning positions
-                    for chr_position, mutation in total_muts_in_sample.items():
-                        if not chr_position in self.warning_chr_position:
-                            muttype = mutation[0][1]
-                            self.cohort_to_mutation_alts[cohort][muttype][f'{chr_position}_{muttype}'] += [mutation[0][0]]
-                            self.cohort_to_mutation_counts[cohort][muttype][f'{chr_position}_{muttype}'] += 1
+                    # Load data to generate hotspots
+                    for chr_position, alt_data in unique_mutations:
+                        alt, muttype = alt_data[0]
+                        self.cohort_to_mutation_alts[cohort][muttype][f'{chr_position}_{muttype}'] += [alt]
+                        self.cohort_to_mutation_counts[cohort][muttype][f'{chr_position}_{muttype}'] += 1
 
         if warning_samples_n > 0:
             logger.warning(f'A total of {warning_samples_n} samples '
@@ -462,7 +468,7 @@ class HotspotFinder:
                         alternates_counts = ','.join(alternates_counts)
                         alternates_fractions = ','.join(alternates_fractions)
                         n_mut_samples = len(mut_samples)
-                        frac_mut_samples = str(len(mut_samples) / n_cohort_samples)
+                        frac_mut_samples = str(n_mut_samples / n_cohort_samples)
                         mut_samples_to_alt = ';'.join([f'{k}::{",".join(v)}' for k, v in mut_samples_to_alt.items()])
                         mut_samples = ';'.join(list(mut_samples))
 
