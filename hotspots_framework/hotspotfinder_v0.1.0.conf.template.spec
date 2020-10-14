@@ -25,6 +25,6 @@ genomic_elements = string(default='all')
 remove_nonannotated_hotspots = boolean(default=True)
 
 [settings]
-output_format = option('tsv', 'vcf', default='tsv')
+output_format = option('tsv', default='tsv')
 gzip = boolean(default=False)
 cores = integer(default=None)

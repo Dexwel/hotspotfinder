@@ -71,12 +71,11 @@ remove_nonannotated_hotspots = True
 
 
 [settings]
-# Format of output file: 'tsv' or 'vcf'
+# Format of output file: 'tsv'
 output_format = 'tsv'
 
 # GZIP compression of output file
 gzip = True
 
 # Number of cores
-# Set to 'all' to use all available cores
 cores = 1
