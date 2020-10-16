@@ -119,6 +119,7 @@ class HotspotFinder:
         self.regions_tree = None
         self.genomic_elements_list = [
             'cds',
+            'splice_sites',
             '5utr',
             '3utr',
             'proximal_promoters',

@@ -61,7 +61,7 @@ population_variants = 'bgdata'
 # Alternatively, you can provide a path to a file
 # If you want to annotate all regions in bgdata, please set the variable to 'all'
 # If you want to restrict the analysis to a single category, you can use
-# 'cds', '5utr', '3utr', 'proximal_promoters', 'distal_promoters', 'introns'
+# 'cds', 'splice_sites', '5utr', '3utr', 'proximal_promoters', 'distal_promoters', 'introns'
 # By default, all regions in bgdata are used:
 genomic_elements = 'all'
 
