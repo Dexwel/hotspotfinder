@@ -17,7 +17,6 @@ from bgparsers import readers
 import click
 import daiquiri
 from intervaltree import IntervalTree
-import tabix
 
 
 # Global variables
@@ -109,10 +108,13 @@ class HotspotFinder:
 
         # Mappability data
         self.mappable_regions_file = mappable_regions
+        self.mappable_regions_tree = None
         self.blacklisted_regions_file = blacklisted_regions
+        self.blacklisted_regions_tree = None
 
         # Variation data
-        self.variation_directory = population_variants
+        self.variation_data_file = population_variants
+        self.variation_data_set = None
 
         # Genomic elements data
         self.genomic_elements = genomic_elements
@@ -152,26 +154,6 @@ class HotspotFinder:
         self.warning_chr_position = set()
 
     @staticmethod
-    def load_genomic_elements(files):
-        """
-        Load genomic element regions into intervaltree
-        Args:
-            files (list): list of tuples containing element_type and path(s) to file(s)
-
-        Returns:
-            tree (dict): tree with regions, keys are chromosomes, data are regions
-        """
-
-        tree = defaultdict(IntervalTree)
-        for genomic_element, file in files:
-            with gzip.open(file, 'rt') as fd:
-                next(fd)
-                for line in fd:
-                    chrom, start, end, strand, gene_id, transcript_id, symbol = line.strip().split('\t')
-                    tree[chrom].addi(int(start), int(end) + 1, f'{symbol}::{gene_id}::{transcript_id}::{genomic_element}')  # +1
-        return tree
-
-    @staticmethod
     def load_mappability(file, chr_format='chrN'):
         """
         Load mappability regions into intervaltree
@@ -189,6 +171,47 @@ class HotspotFinder:
             for line in fd:
                 chrom, start, end = line.strip().split('\t')
                 tree[chrom[trim:]].addi(int(start), int(end) + 1, '')  # +1 interval
+        return tree
+
+    @staticmethod
+    def load_variation(file, chr_format='chrN'):
+        """
+        Load population variants into set
+        Args:
+            file (path): path to file containing population variants data
+            chr_format (str): chromosome format used in file. HotspotFinder works with format '1' instead of 'chr1'
+
+        Returns:
+            set_of_interest (set): set with variants annotated as 'N_position'
+        """
+
+        set_of_interest = set()
+        trim = 3 if chr_format == 'chrN' else None
+        with gzip.open(file, 'rt') as fd:
+            for line in fd:
+                chrom, position = line.strip().split('\t')[:2]
+                set_of_interest.add(f'{chrom[trim:]}_{position}')
+        return set_of_interest
+
+    @staticmethod
+    def load_genomic_elements(files):
+        """
+        Load genomic element regions into intervaltree
+        Args:
+            files (list): list of tuples containing element_type and path(s) to file(s)
+
+        Returns:
+            tree (dict): tree with regions, keys are chromosomes, data are regions
+        """
+
+        tree = defaultdict(IntervalTree)
+        for genomic_element, file in files:
+            with gzip.open(file, 'rt') as fd:
+                next(fd)
+                for line in fd:
+                    chrom, start, end, strand, gene_id, transcript_id, symbol = line.strip().split('\t')
+                    tree[chrom].addi(int(start), int(end) + 1,
+                                     f'{symbol}::{gene_id}::{transcript_id}::{genomic_element}')  # +1
         return tree
 
     def parse_mutations(self):
@@ -418,11 +441,7 @@ class HotspotFinder:
             'MUTATED_SAMPLES_ALTS'
         ]
 
-        variation_tb_dict = {}
-        for chromosome in list(map(str, range(1, 23))) + ['X', 'Y']:
-            variation_tb_dict[chromosome] = tabix.open(f'{self.variation_directory}/gnomad.genomes.r3.0.sites.chr{chromosome}.af_0.01.tsv.gz')
         hotspot_count = 0
-
         with self.open_function(self.output_file_hotspots, self.write_mode) as ofd:
             ofd.write('{}\n'.format('\t'.join(header)))
             for cohort, data in self.hotspots.items():
@@ -512,15 +531,10 @@ class HotspotFinder:
                                 break
 
                         # Variation
-                        variation_tb = variation_tb_dict[chromosome]
                         var_data = 'PASS'
-                        try:
-                            for info in variation_tb.query(f'chr{chromosome}', int(position), int(position)):
-                                var_data = 'FAIL'
-                                hotspotfinder_filters -= 1
-                                break
-                        except tabix.TabixError:
-                            var_data = 'PASS'
+                        if set([chr_pos]).intersection(self.variation_data_set):
+                            var_data = 'FAIL'
+                            hotspotfinder_filters -= 1
 
                         hotspotfinder_filters = 'PASS' if hotspotfinder_filters == 3 else 'FAIL'
 
@@ -624,6 +638,10 @@ class HotspotFinder:
         self.parse_mutations()
         logger.info('Mutations parsed')
 
+        # Identify hotspots based on the threshold of mutations
+        self.find_hotspots()
+        logger.info('Hotspots identified')
+
         # Load mappability data into IntervalTree
         if self.mappable_regions_file == 'bgdata':
             self.mappable_regions_file = bgdata.get(f'genomemappability/{self.genome}/gem_100bp')
@@ -637,6 +655,13 @@ class HotspotFinder:
             self.blacklisted_regions_tree = self.load_mappability(self.blacklisted_regions_file)
         logger.info('Mappability data loaded')
 
+        # Load population variants
+        if self.variation_data_file == 'bgdata':
+            self.variation_data_file = bgdata.get(f'populationvariants/{self.genome}/gnomad_v3_AF1')
+            self.variation_data_set = self.load_variation(self.variation_data_file)
+        else:
+            self.variation_data_set = self.load_variation(self.variation_data_file)
+
         # Load genomic elements into IntervalTree
         regions_data = []
         if os.path.isfile(self.genomic_elements):
@@ -649,10 +674,6 @@ class HotspotFinder:
                               bgdata.get(f'genomicregions/{self.genome}/{self.genomic_elements}'))]
         self.regions_tree = self.load_genomic_elements(regions_data)
         logger.info('Genomic regions loaded')
-
-        # Identify hotspots based on the threshold of mutations
-        self.find_hotspots()
-        logger.info('Hotspots identified')
 
         # Write info
         # TODO implement VCF output
@@ -743,29 +764,27 @@ def main(
     if os.path.isfile(config['mappability']['mappable_regions']):
         mappable_regions = config['mappability']['mappable_regions']
     else:
-        if config['mappability']['mappable_regions'] != 'bgdata':
+        if config['mappability']['mappable_regions'] == 'bgdata':
+            mappable_regions = 'bgdata'
+        else:
             logger.error(f"Mappable regions file does not exist: {config['mappability']['mappable_regions']}")
             sys.exit(-1)
-        else:
-            mappable_regions = 'bgdata'
 
     if os.path.isfile(config['mappability']['blacklisted_regions']):
         blacklisted_regions = config['mappability']['blacklisted_regions']
     else:
-        if config['mappability']['blacklisted_regions'] != 'bgdata':
+        if config['mappability']['blacklisted_regions'] == 'bgdata':
+            blacklisted_regions = 'bgdata'
+        else:
             logger.error(f"Blacklisted regions file does not exist: {config['mappability']['blacklisted_regions']}")
             sys.exit(-1)
-        else:
-            blacklisted_regions = 'bgdata'
 
     # Population variants
     if os.path.isdir(config['polymorphisms']['population_variants']):
         population_variants = config['polymorphisms']['population_variants']
     else:
         if config['polymorphisms']['population_variants'] == 'bgdata':
-            # TODO add bgdata
-            logger.error(f"bgdata population variants info is not available")
-            sys.exit(-1)
+            population_variants = 'bgdata'
         else:
             logger.error(f"Population variants file does not exist: {config['polymorphisms']['population_variants']}")
             sys.exit(-1)
