@@ -626,13 +626,13 @@ class HotspotFinder:
 
         # Load mappability data into IntervalTree
         if self.mappable_regions_file == 'bgdata':
-            pass
-            #FIXME
+            self.mappable_regions_file = bgdata.get(f'genomemappability/{self.genome}/gem_100bp')
+            self.mappable_regions_tree = self.load_mappability(self.mappable_regions_file)
         else:
             self.mappable_regions_tree = self.load_mappability(self.mappable_regions_file)
         if self.blacklisted_regions_file == 'bgdata':
-            pass
-            # FIXME
+            self.blacklisted_regions_file = bgdata.get(f'genomemappability/{self.genome}/blacklist')
+            self.blacklisted_regions_tree = self.load_mappability(self.blacklisted_regions_file)
         else:
             self.blacklisted_regions_tree = self.load_mappability(self.blacklisted_regions_file)
         logger.info('Mappability data loaded')
@@ -743,23 +743,20 @@ def main(
     if os.path.isfile(config['mappability']['mappable_regions']):
         mappable_regions = config['mappability']['mappable_regions']
     else:
-        if config['mappability']['mappable_regions'] == 'bgdata':
-            # TODO add bgdata
-            logger.error(f"bgdata mappable regions file is not available")
-            sys.exit(-1)
-        else:
+        if config['mappability']['mappable_regions'] != 'bgdata':
             logger.error(f"Mappable regions file does not exist: {config['mappability']['mappable_regions']}")
             sys.exit(-1)
+        else:
+            mappable_regions = 'bgdata'
+
     if os.path.isfile(config['mappability']['blacklisted_regions']):
         blacklisted_regions = config['mappability']['blacklisted_regions']
     else:
-        if config['mappability']['blacklisted_regions'] == 'bgdata':
-            # TODO add bgdata
-            logger.error(f"bgdata blacklisted regions file is not available")
-            sys.exit(-1)
-        else:
+        if config['mappability']['blacklisted_regions'] != 'bgdata':
             logger.error(f"Blacklisted regions file does not exist: {config['mappability']['blacklisted_regions']}")
             sys.exit(-1)
+        else:
+            blacklisted_regions = 'bgdata'
 
     # Population variants
     if os.path.isdir(config['polymorphisms']['population_variants']):
