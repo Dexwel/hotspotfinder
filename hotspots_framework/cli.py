@@ -77,7 +77,7 @@ def main(
             directory=output_directory
         )
     ))
-    logger = daiquiri.getLogger()
+    logger = daiquiri.getLogger(__logger_name__)
     logger.info('HotspotFinder')
     logger.info('Initializing HotspotFinder...')
 
