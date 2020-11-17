@@ -1,12 +1,14 @@
 import logging
 import os
 import sys
+from collections import defaultdict
 
 import click
 import daiquiri
 
 from hotspots_framework import __logger_name__
-from hotspots_framework.hotspotfinder import HotspotFinder, load_configuration
+from hotspots_framework.hotspotfinder import HotspotFinder
+from hotspots_framework import configuration
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -81,21 +83,30 @@ def main(
     logger.info('HotspotFinder')
     logger.info('Initializing HotspotFinder...')
 
-    # Read configuration file
-    config = load_configuration(config_file=configuration_file)
-
-    # Use configuration file parameters when they are not provided by the command line
-    if not genome:
-        genome = config['genome']['build']
-    if not mutations_cutoff:
-        mutations_cutoff = config['hotspot_mutations']['cutoff']
-    if not group_by:
-        group_by = config['group']['groupby']
-    if not cores:
-        cores = config['settings']['cores']
+    # Override configuration file parameters by the CLI arguments
+    dd = lambda: defaultdict(dd)
+    config_override = dd()
+    if genome:
+        print(genome)
+        config_override['genome']['build'] = genome
+    if mutations_cutoff:
+        config_override['hotspot_mutations']['cutoff'] = mutations_cutoff
+    if group_by:
+        config_override['group']['groupby'] = group_by
+    if cores:
         if cores > os.cpu_count():
             cores = os.cpu_count()
             logger.warning('Input cores greater than maximum CPU cores. Using maximum CPU cores instead')
+        config_override['settings']['cores'] = cores
+
+    # Read configuration file
+    config = configuration.load(config_file=configuration_file, override=None)
+
+    genome = config['genome']['build']
+    mutations_cutoff = config['hotspot_mutations']['cutoff']
+    group_by = config['group']['groupby']
+    cores = config['settings']['cores']
+
 
     # Mappability
     if os.path.isfile(config['mappability']['mappable_regions']):

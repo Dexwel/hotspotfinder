@@ -14,36 +14,12 @@ from bgconfig import BGConfig
 import bgdata
 import bgreference as bgref
 from bgparsers import readers
-import click
-import daiquiri
 from intervaltree import IntervalTree
 
 from hotspots_framework import __logger_name__
 
 
 logger = logging.getLogger(__logger_name__)
-
-
-def load_configuration(config_file, override=None):
-    """
-    Load the configuration file and checks the format.
-
-    Args:
-        config_file: configuration file path
-        override: override values
-
-    Returns:
-        :class:`bgconfig.BGConfig`: configuration as a :obj:`dict`
-
-    """
-    config_template = f'{config_file}.template'
-
-    try:
-        return BGConfig(
-            config_template, config_file=config_file, use_env_vars=True, override_values=override, unrepr=False)
-    except ValueError as e:
-        logger.error(e)
-        sys.exit(-1)
 
 
 class HotspotFinder:
