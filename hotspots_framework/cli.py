@@ -171,7 +171,7 @@ def main(
     ]))
 
     # Suppress log messages from some libraries
-    # daiquiri.getLogger('bgdata').setLevel(logging.WARNING)
+    daiquiri.getLogger('bgdata').setLevel(logging.WARNING)
 
     # Generate stage 1 hotspots (no annotations)
     experiment = HotspotFinder(
