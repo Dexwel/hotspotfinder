@@ -22,5 +22,10 @@ setup(
     url="https://bitbucket.org/carnedo/hotspots_framework",
     author="Claudia Arnedo",
     author_email="bbglab@irbbarcelona.org",
-    license="GNU Affero General Public License v3 or later (AGPLv3+)"
+    license="GNU Affero General Public License v3 or later (AGPLv3+)",
+    entry_points={
+        'console_scripts': [
+            'hotspotfinder = hotspots_framework.cli:main'
+        ]
+    }
 )
