@@ -7,6 +7,7 @@ import click
 import daiquiri
 
 from hotspots_framework import __logger_name__
+from hotspots_framework.exceptions import HotspotFrameworkError
 from hotspots_framework.hotspotfinder import HotspotFinder
 from hotspots_framework import configuration
 
@@ -104,52 +105,34 @@ def main(
         config_override['settings']['cores'] = cores
 
     # Read configuration file
-    config = configuration.load(config_file=configuration_file, override=None)
+    config = configuration.load(config_file=configuration_file, override=config_override)
 
     genome = config['genome']['build']
     mutations_cutoff = config['hotspot_mutations']['cutoff']
     group_by = config['group']['groupby']
     cores = config['settings']['cores']
+    mappable_regions = config['mappability']['mappable_regions']
+    blacklisted_regions = config['mappability']['blacklisted_regions']
+    population_variants = config['polymorphisms']['population_variants']
+    genomic_elements = config['genomic_regions']['genomic_elements']
+
 
     # Mappability
-    if os.path.isfile(config['mappability']['mappable_regions']):
-        mappable_regions = config['mappability']['mappable_regions']
-    else:
-        if config['mappability']['mappable_regions'] == 'bgdata':
-            mappable_regions = 'bgdata'
-        else:
-            logger.error(f"Mappable regions file does not exist: {config['mappability']['mappable_regions']}")
-            sys.exit(-1)
+    if not os.path.isfile(config['mappability']['mappable_regions']):
+        raise HotspotFrameworkError(f"Mappable regions file does not exist: {config['mappability']['mappable_regions']}")
 
-    if os.path.isfile(config['mappability']['blacklisted_regions']):
-        blacklisted_regions = config['mappability']['blacklisted_regions']
-    else:
-        if config['mappability']['blacklisted_regions'] == 'bgdata':
-            blacklisted_regions = 'bgdata'
-        else:
-            logger.error(f"Blacklisted regions file does not exist: {config['mappability']['blacklisted_regions']}")
-            sys.exit(-1)
+    if not os.path.isfile(config['mappability']['blacklisted_regions']):
+        raise HotspotFrameworkError(f"Blacklisted regions file does not exist: {config['mappability']['blacklisted_regions']}")
 
     # Population variants
-    if os.path.isfile(config['polymorphisms']['population_variants']):
-        population_variants = config['polymorphisms']['population_variants']
-    else:
-        if config['polymorphisms']['population_variants'] == 'bgdata':
-            population_variants = 'bgdata'
-        else:
-            logger.error(f"Population variants file does not exist: {config['polymorphisms']['population_variants']}")
-            sys.exit(-1)
+    if not os.path.isfile(config['polymorphisms']['population_variants']):
+        raise HotspotFrameworkError(f"Population variants file does not exist: {config['polymorphisms']['population_variants']}")
 
     # Genomic elements
-    if os.path.isfile(config['genomic_regions']['genomic_elements']):
-        genomic_elements = config['genomic_regions']['genomic_elements']
-    else:
-        if config['genomic_regions']['genomic_elements'] in {'all', 'cds', '5utr', '3utr', 'proximal_promoters',
-                                                             'distal_promoters', 'introns'}:
-            genomic_elements = config['genomic_regions']['genomic_elements']
-        else:
-            logger.error(f"Genomic regions file does not exist: {config['genomic_regions']['genomic_elements']}")
-            sys.exit(-1)
+    if not os.path.isfile(config['genomic_regions']['genomic_elements']) and \
+            not config['genomic_regions']['genomic_elements'] in \
+                {'all', 'cds', '5utr', '3utr', 'proximal_promoters', 'distal_promoters', 'introns'}:
+        raise HotspotFrameworkError(f"Genomic regions file does not exist: {config['genomic_regions']['genomic_elements']}")
 
     # Extra parameters
     remove_unknown_nucleotides = config['reference_nucleotides']['remove_unknowns']
