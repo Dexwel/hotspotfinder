@@ -25,7 +25,7 @@ setup(
     license="GNU Affero General Public License v3 or later (AGPLv3+)",
     entry_points={
         'console_scripts': [
-            'hotspotfinder = hotspots_framework.cli:main'
+            'hotspotfinder = hotspots_framework.finder.cli:main'
         ]
     }
 )

@@ -24,11 +24,8 @@ def load(config_file, override=None):
     config_template = path.join(path.dirname(__file__), "hotspot.conf.template")
     config_spec = path.join(path.dirname(__file__), "hotspot.conf.spec")
 
-    try:
-        config = BGConfig(
-            config_template, config_file=config_file, config_spec=config_spec, use_env_vars=True,
-            override_values=override, unrepr=False, use_bgdata=True)
-    except ValueError as e:
-        LOGGER.error(e)
-        raise e
+    config = BGConfig(
+        config_template, config_file=config_file, config_spec=config_spec, use_env_vars=True,
+        override_values=override, unrepr=False, use_bgdata=True)
+
     return config

@@ -1,14 +1,13 @@
 import logging
 import os
-import sys
 from collections import defaultdict
 
 import click
 import daiquiri
 
 from hotspots_framework import __logger_name__
-from hotspots_framework.exceptions import HotspotFrameworkError
-from hotspots_framework.hotspotfinder import HotspotFinder
+from hotspots_framework.finder import HotspotFinderError
+from hotspots_framework.finder.hotspotfinder import HotspotFinder
 from hotspots_framework import configuration
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -111,20 +110,20 @@ def main(
 
     # Mappability
     if not os.path.isfile(config['mappability']['mappable_regions']):
-        raise HotspotFrameworkError(f"Mappable regions file does not exist: {config['mappability']['mappable_regions']}")
+        raise HotspotFinderError(f"Mappable regions file does not exist: {config['mappability']['mappable_regions']}")
 
     if not os.path.isfile(config['mappability']['blacklisted_regions']):
-        raise HotspotFrameworkError(f"Blacklisted regions file does not exist: {config['mappability']['blacklisted_regions']}")
+        raise HotspotFinderError(f"Blacklisted regions file does not exist: {config['mappability']['blacklisted_regions']}")
 
     # Population variants
     if not os.path.isfile(config['polymorphisms']['population_variants']):
-        raise HotspotFrameworkError(f"Population variants file does not exist: {config['polymorphisms']['population_variants']}")
+        raise HotspotFinderError(f"Population variants file does not exist: {config['polymorphisms']['population_variants']}")
 
     # Genomic elements
     if not os.path.isfile(config['genomic_regions']['genomic_elements']) and \
             not config['genomic_regions']['genomic_elements'] in \
                 {'all', 'cds', '5utr', '3utr', 'proximal_promoters', 'distal_promoters', 'introns'}:
-        raise HotspotFrameworkError(f"Genomic regions file does not exist: {config['genomic_regions']['genomic_elements']}")
+        raise HotspotFinderError(f"Genomic regions file does not exist: {config['genomic_regions']['genomic_elements']}")
 
     # Output file names
     compression = '.gz' if config['settings']['gzip'] else ''
