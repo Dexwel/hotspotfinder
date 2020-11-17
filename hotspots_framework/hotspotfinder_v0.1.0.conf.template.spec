@@ -14,11 +14,11 @@ groupby = option('none', 'GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE', 'PLATFORM
 split = boolean(default=False)
 
 [mappability]
-mappable_regions = string(default='bgdata')
-blacklisted_regions = string(default='bgdata')
+mappable_regions = string()
+blacklisted_regions = string()
 
 [polymorphisms]
-population_variants = string(default='bgdata')
+population_variants = string()
 
 [genomic_regions]
 genomic_elements = string(default='all')

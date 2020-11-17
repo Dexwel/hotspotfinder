@@ -39,20 +39,20 @@ split = False
 # mappable_regions contains regions of high mappability in TSV format
 # By default, this regions are obtained from bgdata
 # Alternatively, you can provide a path to a file
-mappable_regions = 'bgdata'
+mappable_regions = "%(bgdata://genomemappability/hg38/gem_100bp)"
 
 # blacklisted_regions contains artifact regions of low mappability
 # By default, this regions are obtained from bgdata
 # Alternatively, you can provide a path to a file
-blacklisted_regions = 'bgdata'
+blacklisted_regions = "%(bgdata://genomemappability/hg38/blacklist)"
 
 
 [polymorphisms]
-# Read files containing population variants with allele frequency >= 1%
+# Read a file containing population variants with allele frequency >= 1%
 # Please, check that your files use the same reference genome used in this analysis
 # By default, this regions are obtained from bgdata
-# Alternatively, you can provide a path to a directory containing one file per chromosome
-population_variants = 'bgdata'
+# Alternatively, you can provide a path to a tabix file
+population_variants = "%(bgdata://populationvariants/hg38/gnomad_v3_AF1)"
 
 
 [genomic_regions]

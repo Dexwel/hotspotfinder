@@ -79,6 +79,10 @@ def main(
             directory=output_directory
         )
     ))
+
+    # Suppress log messages from some libraries
+    daiquiri.getLogger('bgdata').setLevel(logging.WARNING)
+
     logger = daiquiri.getLogger(__logger_name__)
     logger.info('HotspotFinder')
     logger.info('Initializing HotspotFinder...')
@@ -107,7 +111,6 @@ def main(
     group_by = config['group']['groupby']
     cores = config['settings']['cores']
 
-
     # Mappability
     if os.path.isfile(config['mappability']['mappable_regions']):
         mappable_regions = config['mappability']['mappable_regions']
@@ -128,7 +131,7 @@ def main(
             sys.exit(-1)
 
     # Population variants
-    if os.path.isdir(config['polymorphisms']['population_variants']):
+    if os.path.isfile(config['polymorphisms']['population_variants']):
         population_variants = config['polymorphisms']['population_variants']
     else:
         if config['polymorphisms']['population_variants'] == 'bgdata':
@@ -180,9 +183,6 @@ def main(
         f'* Group analysis by: {group_by}',
         f'* Cores: {cores}',
     ]))
-
-    # Suppress log messages from some libraries
-    daiquiri.getLogger('bgdata').setLevel(logging.WARNING)
 
     # Generate stage 1 hotspots (no annotations)
     experiment = HotspotFinder(
