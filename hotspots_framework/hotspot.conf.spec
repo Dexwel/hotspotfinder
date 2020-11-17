@@ -1,30 +1,20 @@
-[genome]
-build = string(default='hg38')
+genome = string(default='hg38')
+cores = integer(default=None)
+output_format = option('tsv', default='tsv')
+gzip = boolean(default=False)
 
-[hotspot_mutations]
-cutoff = integer(default=3)
-
-[reference_nucleotides]
-remove_unknowns = boolean(default=True)
-
-[group]
-groupby = option('none', 'GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE', 'PLATFORM', default='none')
-
-[alternates]
-split = boolean(default=False)
-
-[mappability]
 mappable_regions = string()
 blacklisted_regions = string()
-
-[polymorphisms]
 population_variants = string()
 
-[genomic_regions]
 genomic_elements = string(default='all')
 remove_nonannotated_hotspots = boolean(default=True)
 
-[settings]
-output_format = option('tsv', default='tsv')
-gzip = boolean(default=False)
-cores = integer(default=None)
+[finder]
+mutations_cutoff = integer(default=3)
+# TODO remove "remove"
+remove_unknown_reference_nucleotides = boolean(default=True)
+split_alternates = boolean(default=False)
+groupby = option('none', 'GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE', 'PLATFORM', default='none')
+
+

@@ -62,17 +62,17 @@ class HotspotFinder:
         self.output_file_warning = output_file_warning
 
         # Mappability data
-        self.mappable_regions_file = config['mappability']['mappable_regions']
+        self.mappable_regions_file = config['mappable_regions']
         self.mappable_regions_tree = None
-        self.blacklisted_regions_file = config['mappability']['blacklisted_regions']
+        self.blacklisted_regions_file = config['blacklisted_regions']
         self.blacklisted_regions_tree = None
 
         # Variation data
-        self.variation_data_file = config['polymorphisms']['population_variants']
+        self.variation_data_file = config['population_variants']
         self.variation_data_set = None
 
         # Genomic elements data
-        self.genomic_elements = config['genomic_regions']['genomic_elements']
+        self.genomic_elements = config['genomic_elements']
         self.regions_tree = None
         # TODO use only one list in both, cli and here
         self.genomic_elements_list = [
@@ -87,16 +87,16 @@ class HotspotFinder:
         self.genomic_elements_priority = {e: self.genomic_elements_list.index(e) for e in self.genomic_elements_list}
 
         # Params
-        self.output_format = config['settings']['output_format']
-        self.open_function = gzip.open if config['settings']['gzip'] else open
-        self.write_mode = 'wt' if config['settings']['gzip'] else 'w'
-        self.hotspot_mutations = config['hotspot_mutations']['cutoff']
-        self.split_alternates = config['alternates']['split']
-        self.remove_unknown_nucleotides = config['reference_nucleotides']['remove_unknowns']
-        self.remove_nonannotated_hotspots = config['genomic_regions']['remove_nonannotated_hotspots']
-        self.genome = config['genome']['build']
-        self.group_by = config['group']['groupby']
-        self.cores = config['settings']['cores']
+        self.output_format = config['output_format']
+        self.open_function = gzip.open if config['gzip'] else open
+        self.write_mode = 'wt' if config['gzip'] else 'w'
+        self.hotspot_mutations = config['finder']['mutations_cutoff']
+        self.split_alternates = config['finder']['split_alternates']
+        self.remove_unknown_nucleotides = config['finder']['remove_unknown_reference_nucleotides']
+        self.remove_nonannotated_hotspots = config['remove_nonannotated_hotspots']
+        self.genome = config['genome']
+        self.group_by = config['finder']['groupby']
+        self.cores = config['cores']
 
         # Initialize variables to load data
         self.mutations_dict = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))

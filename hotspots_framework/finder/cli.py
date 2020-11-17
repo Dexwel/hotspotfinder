@@ -91,42 +91,42 @@ def main(
     dd = lambda: defaultdict(dd)
     config_override = dd()
     if genome:
-        config_override['genome']['build'] = genome
+        config_override['genome'] = genome
     if mutations_cutoff:
-        config_override['hotspot_mutations']['cutoff'] = mutations_cutoff
+        config_override['finder']['mutations_cutoff'] = mutations_cutoff
     if group_by:
-        config_override['group']['groupby'] = group_by
+        config_override['finder']['groupby'] = group_by
     if cores:
         if cores > os.cpu_count():
             cores = os.cpu_count()
             logger.warning('Input cores greater than maximum CPU cores. Using maximum CPU cores instead')
-        config_override['settings']['cores'] = cores
+        config_override['cores'] = cores
 
     # Read configuration file
     config = configuration.load(config_file=configuration_file, override=config_override)
 
     # TODO remove this hack an set None as default value
-    config['group']['groupby'] = '' if config['group']['groupby'] == 'none' else config['group']['groupby']
+    config['finder']['groupby'] = '' if config['finder']['groupby'] == 'none' else config['group']['groupby']
 
     # Mappability
-    if not os.path.isfile(config['mappability']['mappable_regions']):
+    if not os.path.isfile(config['mappable_regions']):
         raise HotspotFinderError(f"Mappable regions file does not exist: {config['mappability']['mappable_regions']}")
 
-    if not os.path.isfile(config['mappability']['blacklisted_regions']):
+    if not os.path.isfile(config['blacklisted_regions']):
         raise HotspotFinderError(f"Blacklisted regions file does not exist: {config['mappability']['blacklisted_regions']}")
 
     # Population variants
-    if not os.path.isfile(config['polymorphisms']['population_variants']):
+    if not os.path.isfile(config['population_variants']):
         raise HotspotFinderError(f"Population variants file does not exist: {config['polymorphisms']['population_variants']}")
 
     # Genomic elements
-    if not os.path.isfile(config['genomic_regions']['genomic_elements']) and \
-            not config['genomic_regions']['genomic_elements'] in \
+    if not os.path.isfile(config['genomic_elements']) and \
+            not config['genomic_elements'] in \
                 {'all', 'cds', '5utr', '3utr', 'proximal_promoters', 'distal_promoters', 'introns'}:
         raise HotspotFinderError(f"Genomic regions file does not exist: {config['genomic_regions']['genomic_elements']}")
 
     # Output file names
-    compression = '.gz' if config['settings']['gzip'] else ''
+    compression = '.gz' if config['gzip'] else ''
     output_file_results = os.path.join(output_directory, f'{file_name}.results.txt{compression}')
     output_file_warning = os.path.join(output_directory, f'{file_name}.warningpositions.txt{compression}')
 
@@ -135,20 +135,20 @@ def main(
     logger.info('\n'.join([
         '\n'
         f"* Input mutations file: {input_mutations}",
-        f"* Mapable regions file: {config['mappability']['mappable_regions']}",
-        f"* Blacklisted regions file: {config['mappability']['blacklisted_regions']}",
-        f"* Population variants directory: {config['polymorphisms']['population_variants']}",
-        f"* Genomic elements file: {config['genomic_regions']['genomic_elements']}",
+        f"* Mapable regions file: {config['mappable_regions']}",
+        f"* Blacklisted regions file: {config['blacklisted_regions']}",
+        f"* Population variants directory: {config['population_variants']}",
+        f"* Genomic elements file: {config['genomic_elements']}",
         f"* Output results directory: {output_directory}",
-        f"* Output format: {config['settings']['output_format']}",
-        f"* GZIP compression: {config['settings']['gzip']}",
-        f"* Cutoff hotspots mutations: {config['hotspot_mutations']['cutoff']}",
-        f"* Hotspots split alternates: {config['alternates']['split']}",
-        f"* Remove unknown nucleotides: {config['reference_nucleotides']['remove_unknowns']}",
-        f"* Remove nonannotated hotspots: {config['genomic_regions']['remove_nonannotated_hotspots']}",
-        f"* Genome: {config['genome']['build']}",
-        f"* Group analysis by: {config['group']['groupby']}",
-        f"* Cores: {config['settings']['cores']}",
+        f"* Output format: {config['output_format']}",
+        f"* GZIP compression: {config['gzip']}",
+        f"* Cutoff hotspots mutations: {config['finder']['mutations_cutoff']}",
+        f"* Hotspots split alternates: {config['finder']['split_alternates']}",
+        f"* Remove unknown nucleotides: {config['finder']['remove_unknown_reference_nucleotides']}",
+        f"* Remove nonannotated hotspots: {config['remove_nonannotated_hotspots']}",
+        f"* Genome: {config['genome']}",
+        f"* Group analysis by: {config['finder']['groupby']}",
+        f"* Cores: {config['cores']}",
     ]))
 
     # Generate stage 1 hotspots (no annotations)

@@ -1,39 +1,18 @@
-[genome]
 # Reference genome
 # Genomes supported in the current version: hg38
-build = 'hg38'
+genome = 'hg38'
 
 
-[hotspot_mutations]
-# Minimum number of mutated samples to identify a hotspot
-# By definition, hotspots contain at least 2 mutated samples
-# By default, hotspots are defined as 3 mutated samples or more
-cutoff = 3
+# Number of cores
+cores = 1
+
+# Format of output file: 'tsv'
+output_format = 'tsv'
+
+# GZIP compression of output file
+gzip = True
 
 
-[reference_nucleotides]
-# Reference nucleotide context can contain unknown nucleotides ('N')
-# By default, hotspots containing one 'N' in their tri- and/or penta-nucleotide
-# context are discarded
-remove_unknowns = True
-
-
-[group]
-# Identify hotspots in different groups of samples in the input mutations file
-# Column names to group samples are 'GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE' and 'PLATFORM'
-# Uncomment the line below to identify hotspots based on column name 'GROUP'
-# groupby = 'GROUP'
-# By default, hotspots are computed using all samples in the input mutations file
-groupby = 'none'
-
-
-[alternates]
-# Compute hotspots per nucleotide alternate independently or merged
-# By default, hotspots merge different alternates
-split = False
-
-
-[mappability]
 # Read two files containing genome mappability data
 # Please, check that your files use the same reference genome used in this analysis
 # mappable_regions contains regions of high mappability in TSV format
@@ -47,7 +26,6 @@ mappable_regions = "%(bgdata://genomemappability/hg38/gem_100bp)"
 blacklisted_regions = "%(bgdata://genomemappability/hg38/blacklist)"
 
 
-[polymorphisms]
 # Read a file containing population variants with allele frequency >= 1%
 # Please, check that your files use the same reference genome used in this analysis
 # By default, this regions are obtained from bgdata
@@ -55,7 +33,6 @@ blacklisted_regions = "%(bgdata://genomemappability/hg38/blacklist)"
 population_variants = "%(bgdata://populationvariants/hg38/gnomad_v3_AF1)"
 
 
-[genomic_regions]
 # Read a file with genomic regions annotations to annotate hotspots
 # By default, this regions are obtained from bgdata
 # Alternatively, you can provide a path to a file
@@ -70,12 +47,32 @@ genomic_elements = 'all'
 remove_nonannotated_hotspots = True
 
 
-[settings]
-# Format of output file: 'tsv'
-output_format = 'tsv'
 
-# GZIP compression of output file
-gzip = True
+[finder]
 
-# Number of cores
-cores = 1
+# Minimum number of mutated samples to identify a hotspot
+# By definition, hotspots contain at least 2 mutated samples
+# By default, hotspots are defined as 3 mutated samples or more
+mutations_cutoff = 3
+
+
+# Reference nucleotide context can contain unknown nucleotides ('N')
+# By default, hotspots containing one 'N' in their tri- and/or penta-nucleotide
+# context are discarded
+remove_unknown_reference_nucleotides = True
+
+
+# Identify hotspots in different groups of samples in the input mutations file
+# Column names to group samples are 'GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE' and 'PLATFORM'
+# Uncomment the line below to identify hotspots based on column name 'GROUP'
+# groupby = 'GROUP'
+# By default, hotspots are computed using all samples in the input mutations file
+groupby = 'none'
+
+
+# Compute hotspots per nucleotide alternate independently or merged
+# By default, hotspots merge different alternates
+split_alternates = False
+
+
+
