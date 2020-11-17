@@ -126,8 +126,8 @@ def main(
         raise HotspotFinderError(f"Genomic regions file does not exist: {config['genomic_regions']['genomic_elements']}")
 
     # Output file names
-    compression = '.gz' if config['gzip'] else ''
-    output_file_results = os.path.join(output_directory, f'{file_name}.results.txt{compression}')
+    compression = '.gz' if config['output_format'].endswith('.gz') else ''
+    output_file_results = os.path.join(output_directory, f'{file_name}.results.{config["output_format"]}')
     output_file_warning = os.path.join(output_directory, f'{file_name}.warningpositions.txt{compression}')
 
     logger.info('Analysis parameters loaded')

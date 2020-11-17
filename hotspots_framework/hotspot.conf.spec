@@ -1,7 +1,6 @@
 genome = string(default='hg38')
 cores = integer(default=None)
-output_format = option('tsv', default='tsv')
-gzip = boolean(default=False)
+output_format = option('tsv', 'tsv.gz' default='tsv.gz')
 
 mappable_regions = string()
 blacklisted_regions = string()

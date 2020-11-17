@@ -88,8 +88,9 @@ class HotspotFinder:
 
         # Params
         self.output_format = config['output_format']
-        self.open_function = gzip.open if config['gzip'] else open
-        self.write_mode = 'wt' if config['gzip'] else 'w'
+        # TODO create function that handles gzip/- transparently
+        self.open_function = gzip.open if config['output_format'].endswith('.gz') else open
+        self.write_mode = 'wt' if config['output_format'].endswith('.gz') else 'w'
         self.hotspot_mutations = config['finder']['mutations_cutoff']
         self.split_alternates = config['finder']['split_alternates']
         self.remove_unknown_nucleotides = config['finder']['remove_unknown_reference_nucleotides']
