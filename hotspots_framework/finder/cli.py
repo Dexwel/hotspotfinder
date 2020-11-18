@@ -138,7 +138,6 @@ def main(
         f"* Genomic elements file: {config['genomic_elements']}",
         f"* Output results directory: {output_directory}",
         f"* Output format: {config['output_format']}",
-        f"* GZIP compression: {config['gzip']}",
         f"* Cutoff hotspots mutations: {config['finder']['mutations_cutoff']}",
         f"* Hotspots split alternates: {config['finder']['split_alternates']}",
         f"* Remove unknown nucleotides: {config['finder']['remove_unknown_reference_nucleotides']}",
