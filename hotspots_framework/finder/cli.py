@@ -105,9 +105,6 @@ def main(
     # Read configuration file
     config = configuration.load(config_file=configuration_file, override=config_override)
 
-    # TODO remove this hack an set None as default value
-    config['finder']['groupby'] = '' if config['finder']['groupby'] == 'none' else config['group']['groupby']
-
     # Mappability
     if not os.path.isfile(config['mappable_regions']):
         raise HotspotFinderError(f"Mappable regions file does not exist: {config['mappability']['mappable_regions']}")

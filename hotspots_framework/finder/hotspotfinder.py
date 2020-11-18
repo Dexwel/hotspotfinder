@@ -34,21 +34,9 @@ class HotspotFinder:
 
         Args:
             input_file (str): path to input mutations data
-            mappable_regions (str): file with regions of high mappability
-            blacklisted_regions (str): file with artifact regions of low mappability
-            population_variants (str): file with polimorphisms data to insersect
-            genomic_elements (str): file with genomic elements data to intersect
             output_file_results (str): path to output file
             output_file_warning (str): path to genomic positions where warning is found
-            output_format (str): format of output file (TSV or VCF)
-            is_gzip (bool): GZIP output files
-            hotspot_mutations (int): cutoff of mutations to define a hotspot
-            split_alternates (bool): compute hotspots per nucleotide alternate independently
-            remove_unknown_nucleotides (bool): remove hotspots with N nucleotides in their reference context
-            remove_nonannotated_hotspots (bool): remove hotspots not overlapping genomic elements
-            genome (str): reference genome
-            group_by (str): name of the column to group hotspots identification
-            cores (int): number of cpu
+            config (dict): configuration parameters
 
         Returns:
             None

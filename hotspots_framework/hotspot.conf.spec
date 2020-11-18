@@ -14,6 +14,6 @@ mutations_cutoff = integer(default=3)
 # TODO remove "remove"
 remove_unknown_reference_nucleotides = boolean(default=True)
 split_alternates = boolean(default=False)
-groupby = option('none', 'GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE', 'PLATFORM', default='none')
+groupby = option('GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE', 'PLATFORM', default=None)
 
 
