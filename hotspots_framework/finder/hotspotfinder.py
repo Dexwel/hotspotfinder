@@ -15,13 +15,24 @@ from bgparsers import readers
 from intervaltree import IntervalTree
 
 from hotspots_framework import __logger_name__
-
+from hotspots_framework.utils import file_open
 
 logger = logging.getLogger(__logger_name__)
 
 
 class HotspotFinder:
     """Class to identify and annotate hotspots with basic information"""
+
+    GENOMIC_ELEMENTS = [
+            'cds',
+            'splice_sites',
+            '5utr',
+            '3utr',
+            'proximal_promoters',
+            'distal_promoters',
+            'introns'
+        ]
+    CHROMOSOMES = list(map(str, range(1, 23))) + ['X', 'Y']
 
     def __init__(self,
                  input_file,
@@ -45,40 +56,25 @@ class HotspotFinder:
 
         # Input output files
         self.input_file = input_file
-        self.input_file_name = input_file.split('/')[-1].split('.')[0]
         self.output_file_hotspots = output_file_results
         self.output_file_warning = output_file_warning
 
         # Mappability data
-        self.mappable_regions_file = config['mappable_regions']
-        self.mappable_regions_tree = None
-        self.blacklisted_regions_file = config['blacklisted_regions']
-        self.blacklisted_regions_tree = None
+        self.mappable_regions_tree = self.load_mappability(config['mappable_regions'])
+        self.blacklisted_regions_tree = self.load_mappability(config['blacklisted_regions'])
+        logger.info('Mappability data loaded')
 
         # Variation data
-        self.variation_data_file = config['population_variants']
-        self.variation_data_set = None
+        self.variation_data_set = self.load_variation(config['population_variants'])
 
         # Genomic elements data
         self.genomic_elements = config['genomic_elements']
         self.regions_tree = None
-        # TODO use only one list in both, cli and here
-        self.genomic_elements_list = [
-            'cds',
-            'splice_sites',
-            '5utr',
-            '3utr',
-            'proximal_promoters',
-            'distal_promoters',
-            'introns'
-        ]
-        self.genomic_elements_priority = {e: self.genomic_elements_list.index(e) for e in self.genomic_elements_list}
+
+        self.genomic_elements_priority = {e: i for i, e in enumerate(HotspotFinder.GENOMIC_ELEMENTS)}
 
         # Params
         self.output_format = config['output_format']
-        # TODO create function that handles gzip/- transparently
-        self.open_function = gzip.open if config['output_format'].endswith('.gz') else open
-        self.write_mode = 'wt' if config['output_format'].endswith('.gz') else 'w'
         self.hotspot_mutations = config['finder']['mutations_cutoff']
         self.split_alternates = config['finder']['split_alternates']
         self.remove_unknown_nucleotides = config['finder']['remove_unknown_reference_nucleotides']
@@ -115,7 +111,7 @@ class HotspotFinder:
         with gzip.open(file, 'rt') as fd:
             for line in fd:
                 chrom, start, end = line.strip().split('\t')
-                tree[chrom[trim:]].addi(int(start), int(end) + 1, '')  # +1 interval
+                tree[chrom[trim:]].addi(int(start), int(end) + 1)  # +1 interval
         return tree
 
     @staticmethod
@@ -168,7 +164,6 @@ class HotspotFinder:
 
         """
 
-        chromosomes = list(map(str, range(1, 23))) + ['X', 'Y']
         mutations_ref_nomatch = 0
 
         # Read mutations
@@ -178,37 +173,35 @@ class HotspotFinder:
                 extra=['GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE', 'PLATFORM']
         ):
             chromosome = row['CHROMOSOME']
-            position = str(row['POSITION'])
+            position = row['POSITION']
             ref = row['REF']
             alt = row['ALT']
             sample = row['SAMPLE']
-            chr_position = '{}_{}'.format(chromosome, position)
+            chr_position = f'{chromosome}_{position}'
             # Identify group
             # If no group, hotspots are computed using the whole input file
-            if not self.group_by:
-                cohort = self.input_file_name
-            else:
+            if self.group_by:
                 cohort = row[self.group_by]
-            # Keep track of samples from each group
-            self.cohort_to_sample[cohort].add(sample)
-            # Keep track of how many mutations each group has
-            self.cohort_total_mutations['total'][cohort] += 1
+            else:
+                cohort = self.input_file.split('/')[-1].split('.')[0]
 
             # Read mutations in autosomal + sexual chromosomes
-            if chromosome in set(chromosomes):
+            if chromosome in set(HotspotFinder.CHROMOSOMES):
+
                 if ref != alt:
                     # Read substitutions of any length
                     if ref != '-' and alt != '-':
                         if len(alt) == 1:
                             # Check reference
-                            if ref == bgref.refseq(self.genome, chromosome, int(position), 1):
+                            if ref == bgref.refseq(self.genome, chromosome, position, 1):
                                 self.mutations_dict['snv'][sample][chr_position].append(alt)
                                 self.cohort_total_mutations['snv'][cohort] += 1
                                 self.hotspots_samples[cohort]['snv'][chr_position].add(sample)
                             else:
                                 mutations_ref_nomatch += 1
-                                self.cohort_total_mutations['total'][cohort] -= 1
+                                continue  # avoid counting this in the total
                         else:
+                            # TODO reference is not checked
                             self.mutations_dict['mnv'][sample][chr_position].append(alt)
                             self.cohort_total_mutations['mnv'][cohort] += 1
                             self.hotspots_samples[cohort]['mnv'][chr_position].add(sample)
@@ -222,10 +215,16 @@ class HotspotFinder:
                             self.hotspots_samples[cohort]['ins'][chr_position].add(sample)
                         # Deletion
                         elif alt == '-':
+                            # TODO reference is not checked
                             self.mutations_dict['del'][sample][chr_position].append(alt)
                             self.cohort_total_mutations['del'][cohort] += 1
                             self.hotspots_samples[cohort]['del'][chr_position].add(sample)
                             self.original_reference['del'][sample][chr_position].add(ref)
+
+            # Keep track of samples from each group
+            self.cohort_to_sample[cohort].add(sample)
+            # Keep track of how many mutations each group has
+            self.cohort_total_mutations['total'][cohort] += 1
 
         if mutations_ref_nomatch > 0:
             logger.warning(f'A total of {mutations_ref_nomatch} SNVs REF nucleotides do not match the reference. '
@@ -238,74 +237,69 @@ class HotspotFinder:
         # Check mutations per sample and add to cohort_to_mutation dicts
         # Write warning positions
         header = ['CHROMOSOME', 'POSITION', 'REF', 'ALT', 'SAMPLE', 'WARNING', 'SKIP']
-        with self.open_function(self.output_file_warning, self.write_mode) as ofd:
+        with file_open(self.output_file_warning) as ofd:
             ofd.write('{}\n'.format('\t'.join(header)))
             warning_samples_n = 0
             for cohort, set_of_samples in self.cohort_to_sample.items():
                 for sample in set_of_samples:
                     total_muts_in_sample = defaultdict(list)
+                    # TODO check if we can build a unified list in the above step
                     for muttype in ('snv', 'mnv', 'ins', 'del'):
                         for chr_pos, alts in self.mutations_dict[muttype][sample].items():
                             total_muts_in_sample[chr_pos] += [(a, muttype) for a in alts]
-                    # Warning mutations, when there's more than one alternate in the same position
-                    warning_mutations = [(chr_pos, list_alts) for chr_pos, list_alts in total_muts_in_sample.items() if
-                                         len(list_alts) > 1]
-                    if warning_mutations:
-                        warning_samples_n += 1
-                    unique_mutations = [(chr_pos, list_alts) for chr_pos, list_alts in total_muts_in_sample.items() if
-                                         len(list_alts) == 1]
 
-                    # Load warning positions
-                    for chr_position, alts in warning_mutations:
-                        chromosome, position = chr_position.split('_')
-                        alts_unique = set(alts)
-                        alts_simplified = [a for a, muttype in alts]
-                        self.warning_chr_position.add(chr_position)
-                        if len(alts_unique) == 1:
-                            logger.debug(
-                                f'Sample "{sample}" position chr{chr_position} has 2 repeated alternates: '
-                                f'{alts_simplified}.'
-                                f'Number of mutations and number of mutated samples will not match.'
-                            )
-                            alt, muttype = list(alts_unique)[0]
-                            self.cohort_to_mutation_alts[cohort][muttype][f'{chr_position}_{muttype}'] += [alt, alt]
-                            self.cohort_to_mutation_counts[cohort][muttype][f'{chr_position}_{muttype}'] += 2
-                            reference_n = bgref.refseq(self.genome, chromosome, int(position), 1)
-                            ofd.write('{}\n'.format('\t'.join([
-                                chromosome, position, reference_n, ','.join(alts_simplified),
-                                sample, 'warning_1', 'False'
-                            ])))
-                        elif len(alts_unique) == 2:
-                            logger.debug(
-                                f'Sample "{sample}" position chr{chr_position} has 2 different alternates: '
-                                f'{alts_simplified}.'
-                                f'Number of mutations and number of mutated samples will not match.'
-                            )
-                            reference_n = bgref.refseq(self.genome, chromosome, int(position), 1)
-                            ofd.write('{}\n'.format('\t'.join([
-                                chromosome, position, reference_n, ','.join(alts_simplified),
-                                sample, 'warning_2', 'False'
-                            ])))
-                            for mutation in alts_unique:
-                                alt, muttype = mutation
-                                self.cohort_to_mutation_alts[cohort][muttype][f'{chr_position}_{muttype}'] += [alt]
-                                self.cohort_to_mutation_counts[cohort][muttype][f'{chr_position}_{muttype}'] += 1
-                        else:
-                            logger.debug(
-                                f'Sample "{sample}" position chr{chr_position} has 3 or more different alternates: '
-                                f'{alts_simplified}. Mutations are skipped from analysis')
-                            reference_n = bgref.refseq(self.genome, chromosome, int(position), 1)
-                            ofd.write('{}\n'.format('\t'.join([
-                                chromosome, position, reference_n, ','.join(alts_simplified),
-                                sample, 'warning_3', 'True'
-                            ])))
-                            self.hotspots_samples[cohort][muttype][chr_position].discard(sample)
+                    for chr_position, alts in total_muts_in_sample.items():
+                        if len(alts) == 1:
+                            # unique mutations
+                            alt, muttype = alts[0]
+                            self.cohort_to_mutation_alts[cohort][muttype][f'{chr_position}_{muttype}'] += [alt]
+                            self.cohort_to_mutation_counts[cohort][muttype][f'{chr_position}_{muttype}'] += 1
 
-                    # Load data to generate hotspots
-                    for chr_position, alt_data in unique_mutations:
-                        alt, muttype = alt_data[0]
-                        self.cohort_to_mutation_alts[cohort][muttype][f'{chr_position}_{muttype}'] += [alt]
-                        self.cohort_to_mutation_counts[cohort][muttype][f'{chr_position}_{muttype}'] += 1
+                        elif len(alts) > 1:
+                            warning_samples_n += 1
+                            chromosome, position = chr_position.split('_')
+                            alts_unique = set(alts)
+                            alts_simplified = [a for a, muttype in alts]
+                            self.warning_chr_position.add(chr_position)
+                            if len(alts_unique) == 1:
+                                logger.debug(
+                                    f'Sample "{sample}" position chr{chr_position} has 2 repeated alternates: '
+                                    f'{alts_simplified}.'
+                                    f'Number of mutations and number of mutated samples will not match.'
+                                )
+                                alt, muttype = list(alts_unique)[0]
+                                self.cohort_to_mutation_alts[cohort][muttype][f'{chr_position}_{muttype}'] += [alt, alt]
+                                self.cohort_to_mutation_counts[cohort][muttype][f'{chr_position}_{muttype}'] += 2
+                                reference_n = bgref.refseq(self.genome, chromosome, int(position), 1)
+                                ofd.write('{}\n'.format('\t'.join([
+                                    chromosome, position, reference_n, ','.join(alts_simplified),
+                                    sample, 'warning_1', 'False'
+                                ])))
+                            elif len(alts_unique) == 2:
+                                logger.debug(
+                                    f'Sample "{sample}" position chr{chr_position} has 2 different alternates: '
+                                    f'{alts_simplified}.'
+                                    f'Number of mutations and number of mutated samples will not match.'
+                                )
+                                reference_n = bgref.refseq(self.genome, chromosome, int(position), 1)
+                                ofd.write('{}\n'.format('\t'.join([
+                                    chromosome, position, reference_n, ','.join(alts_simplified),
+                                    sample, 'warning_2', 'False'
+                                ])))
+                                for mutation in alts_unique:
+                                    alt, muttype = mutation
+                                    self.cohort_to_mutation_alts[cohort][muttype][f'{chr_position}_{muttype}'] += [alt]
+                                    self.cohort_to_mutation_counts[cohort][muttype][f'{chr_position}_{muttype}'] += 1
+                            else:
+                                logger.debug(
+                                    f'Sample "{sample}" position chr{chr_position} has 3 or more different alternates: '
+                                    f'{alts_simplified}. Mutations are skipped from analysis')
+                                reference_n = bgref.refseq(self.genome, chromosome, int(position), 1)
+                                ofd.write('{}\n'.format('\t'.join([
+                                    chromosome, position, reference_n, ','.join(alts_simplified),
+                                    sample, 'warning_3', 'True'
+                                ])))
+                                self.hotspots_samples[cohort][muttype][chr_position].discard(sample)
 
         if warning_samples_n > 0:
             logger.warning(f'A total of {warning_samples_n} samples '
@@ -387,7 +381,7 @@ class HotspotFinder:
         ]
 
         hotspot_count = 0
-        with self.open_function(self.output_file_hotspots, self.write_mode) as ofd:
+        with file_open(self.output_file_hotspots) as ofd:
             ofd.write('{}\n'.format('\t'.join(header)))
             for cohort, data in self.hotspots.items():
                 n_cohort_samples = len(self.cohort_to_sample[cohort])
@@ -587,32 +581,12 @@ class HotspotFinder:
         self.find_hotspots()
         logger.info('Hotspots identified')
 
-        # Load mappability data into IntervalTree
-        if self.mappable_regions_file == 'bgdata':
-            self.mappable_regions_file = bgdata.get(f'genomemappability/{self.genome}/gem_100bp')
-            self.mappable_regions_tree = self.load_mappability(self.mappable_regions_file)
-        else:
-            self.mappable_regions_tree = self.load_mappability(self.mappable_regions_file)
-        if self.blacklisted_regions_file == 'bgdata':
-            self.blacklisted_regions_file = bgdata.get(f'genomemappability/{self.genome}/blacklist')
-            self.blacklisted_regions_tree = self.load_mappability(self.blacklisted_regions_file)
-        else:
-            self.blacklisted_regions_tree = self.load_mappability(self.blacklisted_regions_file)
-        logger.info('Mappability data loaded')
-
-        # Load population variants
-        if self.variation_data_file == 'bgdata':
-            self.variation_data_file = bgdata.get(f'populationvariants/{self.genome}/gnomad_v3_AF1')
-            self.variation_data_set = self.load_variation(self.variation_data_file)
-        else:
-            self.variation_data_set = self.load_variation(self.variation_data_file)
-
         # Load genomic elements into IntervalTree
         regions_data = []
         if os.path.isfile(self.genomic_elements):
             regions_data += [('regions', self.genomic_elements)]
         elif self.genomic_elements == 'all':
-            for genomic_element in self.genomic_elements_list:
+            for genomic_element in HotspotFinder.GENOMIC_ELEMENTS:
                 regions_data += [(genomic_element, bgdata.get(f'genomicregions/{self.genome}/{genomic_element}'))]
         else:
             regions_data += [(self.genomic_elements,
