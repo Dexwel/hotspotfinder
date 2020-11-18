@@ -428,7 +428,7 @@ class HotspotFinder:
 
                         # Variation
                         var_data = 'PASS'
-                        if set([chr_pos]).intersection(self.variation_data_set):
+                        if {chr_pos}.intersection(self.variation_data_set):
                             var_data = 'FAIL'
                             hotspotfinder_filters -= 1
 
