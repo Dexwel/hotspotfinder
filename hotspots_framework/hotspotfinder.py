@@ -236,8 +236,10 @@ class HotspotFinder:
             position = str(row['POSITION'])
             ref = row['REF']
             alt = row['ALT']
+            alt_type = row['ALT_TYPE']
             sample = row['SAMPLE']
             chr_position = '{}_{}'.format(chromosome, position)
+
             # Identify group
             # If no group, hotspots are computed using the whole input file
             if not self.group_by:
@@ -252,38 +254,43 @@ class HotspotFinder:
             # Read mutations in autosomal + sexual chromosomes
             if chromosome in set(chromosomes):
                 if ref != alt:
-                    # Read substitutions of any length
-                    if ref != '-' and alt != '-':
-                        if len(alt) == 1:
-                            # Check reference
-                            if ref == bgref.refseq(self.genome, chromosome, int(position), 1):
-                                self.mutations_dict['snv'][sample][chr_position].append(alt)
-                                self.cohort_total_mutations['snv'][cohort] += 1
-                                self.hotspots_samples[cohort]['snv'][chr_position].add(sample)
-                            else:
-                                mutations_ref_nomatch += 1
-                                self.cohort_total_mutations['total'][cohort] -= 1
+                    # SNVs
+                    if alt_type == 'snp':
+                        # Check reference
+                        if ref == bgref.refseq(self.genome, chromosome, int(position), 1):
+                            self.mutations_dict['snv'][sample][chr_position].append(alt)
+                            self.cohort_total_mutations['snv'][cohort] += 1
+                            self.hotspots_samples[cohort]['snv'][chr_position].add(sample)
                         else:
+                            mutations_ref_nomatch += 1
+                            self.cohort_total_mutations['total'][cohort] -= 1
+                    # MNVs
+                    elif alt_type == 'mnp':
+                        # Check reference
+                        if ref == bgref.refseq(self.genome, chromosome, int(position), len(ref)):
                             self.mutations_dict['mnv'][sample][chr_position].append(alt)
                             self.cohort_total_mutations['mnv'][cohort] += 1
                             self.hotspots_samples[cohort]['mnv'][chr_position].add(sample)
-
-                    # Read indels of any length
-                    else:
-                        # Insertions
+                        else:
+                            mutations_ref_nomatch += 1
+                            self.cohort_total_mutations['total'][cohort] -= 1
+                    #TODO ask if there are other options, in case there aren't write else
+                    elif alt_type == 'indel':
+                        # Simple insertions (e.g, G>GA, G>GAAA)
                         if ref == '-':
                             self.mutations_dict['ins'][sample][chr_position].append(alt)
                             self.cohort_total_mutations['ins'][cohort] += 1
                             self.hotspots_samples[cohort]['ins'][chr_position].add(sample)
-                        # Deletion
+                        # Simple deletions (e.g, GT>G, GTG>G)
                         elif alt == '-':
                             self.mutations_dict['del'][sample][chr_position].append(alt)
                             self.cohort_total_mutations['del'][cohort] += 1
                             self.hotspots_samples[cohort]['del'][chr_position].add(sample)
                             self.original_reference['del'][sample][chr_position].add(ref)
+                        #TODO implement parsing of complex indels (GTG>GA, GTG>GAAA)
 
         if mutations_ref_nomatch > 0:
-            logger.warning(f'A total of {mutations_ref_nomatch} SNVs REF nucleotides do not match the reference. '
+            logger.warning(f'A total of {mutations_ref_nomatch} SNVs/MNVs REF nucleotides do not match the reference. '
                            f'These mutations are discarded from the analysis')
 
         for muttype, data in self.cohort_total_mutations.items():
