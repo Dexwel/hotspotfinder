@@ -201,9 +201,8 @@ class HotspotFinder:
                 for sample in set_of_samples:
                     total_muts_in_sample = defaultdict(list)
                     # TODO check if we can build a unified list in the above step
-                    for muttype in ('snv', 'mnv', 'ins', 'del'):
-                        for chr_pos, alts in self.mutation_counts.get_mutations(sample, muttype).items():
-                            total_muts_in_sample[chr_pos] += [(a, muttype) for a in alts]
+                    for chr_pos, muttype, alts in self.mutation_counts.get_mutations_and_alternates(cohort, sample):
+                        total_muts_in_sample[chr_pos] += [(a, muttype) for a in alts]
 
                     for chr_position, alts in total_muts_in_sample.items():
                         if len(alts) == 1:

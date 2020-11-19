@@ -10,9 +10,9 @@ class MutationCounter:
 
         self.n_mutations_by_cohort = defaultdict(lambda: defaultdict(int))
         self.samples_and_alternates = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list))))
+        self.mutations_by_sample = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: set())))
 
         self.cohort_to_sample = defaultdict(set)
-        self.mutations_dict = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
         self.original_reference = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
 
         self.reference_mismatch = 0
@@ -24,27 +24,22 @@ class MutationCounter:
             if len(alt) == 1:
                 muttype = 'snv'
                 # Check reference
-                if ref == bgref.refseq(self.genome, chromosome, position, 1):
-                    self.mutations_dict['snv'][sample][chr_position].append(alt)
-                else:
+                if ref != bgref.refseq(self.genome, chromosome, position, 1):
                     self.reference_mismatch += 1
                     return
             else:
                 muttype = 'mnv'
                 # TODO reference is not checked
-                self.mutations_dict['mnv'][sample][chr_position].append(alt)
 
         # Read indels of any length
         else:
             # Insertions
             if ref == '-':
                 muttype = 'ins'
-                self.mutations_dict['ins'][sample][chr_position].append(alt)
             # Deletion
             elif alt == '-':
                 muttype = 'del'
                 # TODO reference is not checked
-                self.mutations_dict['del'][sample][chr_position].append(alt)
                 # TODO check that all alternates have the same ref when adding
                 self.original_reference['del'][sample][chr_position].add(ref)
             else:
@@ -53,6 +48,7 @@ class MutationCounter:
 
         self.samples_and_alternates[cohort][muttype][chr_position][sample].append(alt)
         self.n_mutations_by_cohort[cohort][muttype] += 1
+        self.mutations_by_sample[cohort][sample][muttype].add(chr_position)
         # Keep track of samples from each group
         self.cohort_to_sample[cohort].add(sample)
 
@@ -66,8 +62,10 @@ class MutationCounter:
     def get_alternates_per_mutation(self, mut, muttype, cohort):
         return self.samples_and_alternates[cohort][muttype][mut]
 
-    def get_mutations(self, sample, muttype):
-        return self.mutations_dict[muttype][sample]
+    def get_mutations_and_alternates(self, cohort, sample):
+        for muttype in ('snv', 'mnv', 'ins', 'del'):
+            for mut in self.mutations_by_sample[cohort][sample][muttype]:
+                yield mut, muttype, self.samples_and_alternates[cohort][muttype][mut][sample]
 
     def n_samples_cohort(self, cohort):
         return len(self.cohort_to_sample[cohort])
