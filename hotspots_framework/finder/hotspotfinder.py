@@ -202,7 +202,7 @@ class HotspotFinder:
                     total_muts_in_sample = defaultdict(list)
                     # TODO check if we can build a unified list in the above step
                     for muttype in ('snv', 'mnv', 'ins', 'del'):
-                        for chr_pos, alts in self.mutation_counts.get_mutations(sample, muttype):
+                        for chr_pos, alts in self.mutation_counts.get_mutations(sample, muttype).items():
                             total_muts_in_sample[chr_pos] += [(a, muttype) for a in alts]
 
                     for chr_position, alts in total_muts_in_sample.items():
@@ -352,12 +352,9 @@ class HotspotFinder:
                         chromosome, position, _ = hotspot_id_type.split('>')[0].split('_')    # remove SNV alternate
                         chr_pos = f'{chromosome}_{position}'
 
-                        # Mutated samples
                         mut_samples = self.mutation_counts.get_samples_per_mutation(chr_pos, muttype, cohort)
                         # Alternates
-                        mut_samples_to_alt = {}
-                        for sample in mut_samples:
-                            mut_samples_to_alt[sample] = self.mutation_counts.get_alternates_per_mutation(chr_pos, muttype, sample)
+                        mut_samples_to_alt = self.mutation_counts.get_alternates_per_mutation(chr_pos, muttype, cohort)
                         list_of_alternates = self.cohort_to_mutation_alts[cohort][muttype][hotspot_id_type]
 
                         alternates_counts = []
@@ -383,6 +380,7 @@ class HotspotFinder:
                         alternates = ','.join(sorted(list(set(list_of_alternates))))
                         alternates_counts = ','.join(alternates_counts)
                         alternates_fractions = ','.join(alternates_fractions)
+                        # TODO sometimes this gives an unbound error
                         n_mut_samples = len(mut_samples)
                         frac_mut_samples = str(n_mut_samples / n_cohort_samples)
                         mut_samples_to_alt = ';'.join([f'{k}::{",".join(v)}' for k, v in mut_samples_to_alt.items()])
