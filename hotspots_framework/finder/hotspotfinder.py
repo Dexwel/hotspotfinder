@@ -256,7 +256,7 @@ class HotspotFinder:
                                     chromosome, position, reference_n, ','.join(alts_simplified),
                                     sample, 'warning_3', 'True'
                                 ])))
-                                self.mutation_counts.hotspots_samples[cohort][muttype][chr_position].discard(sample)
+                                self.mutation_counts.samples_and_alternates[cohort][muttype][chr_position].discard(sample)
 
         if warning_samples_n > 0:
             logger.warning(f'A total of {warning_samples_n} samples '
@@ -380,7 +380,6 @@ class HotspotFinder:
                         alternates = ','.join(sorted(list(set(list_of_alternates))))
                         alternates_counts = ','.join(alternates_counts)
                         alternates_fractions = ','.join(alternates_fractions)
-                        # TODO sometimes this gives an unbound error
                         n_mut_samples = len(mut_samples)
                         frac_mut_samples = str(n_mut_samples / n_cohort_samples)
                         mut_samples_to_alt = ';'.join([f'{k}::{",".join(v)}' for k, v in mut_samples_to_alt.items()])

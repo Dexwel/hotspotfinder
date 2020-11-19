@@ -13,7 +13,6 @@ class MutationCounter:
 
         self.cohort_to_sample = defaultdict(set)
         self.mutations_dict = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
-        self.hotspots_samples = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
         self.original_reference = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
 
         self.reference_mismatch = 0
@@ -27,7 +26,6 @@ class MutationCounter:
                 # Check reference
                 if ref == bgref.refseq(self.genome, chromosome, position, 1):
                     self.mutations_dict['snv'][sample][chr_position].append(alt)
-                    self.hotspots_samples[cohort]['snv'][chr_position].add(sample)
                 else:
                     self.reference_mismatch += 1
                     return
@@ -35,7 +33,6 @@ class MutationCounter:
                 muttype = 'mnv'
                 # TODO reference is not checked
                 self.mutations_dict['mnv'][sample][chr_position].append(alt)
-                self.hotspots_samples[cohort]['mnv'][chr_position].add(sample)
 
         # Read indels of any length
         else:
@@ -43,13 +40,12 @@ class MutationCounter:
             if ref == '-':
                 muttype = 'ins'
                 self.mutations_dict['ins'][sample][chr_position].append(alt)
-                self.hotspots_samples[cohort]['ins'][chr_position].add(sample)
             # Deletion
             elif alt == '-':
                 muttype = 'del'
                 # TODO reference is not checked
                 self.mutations_dict['del'][sample][chr_position].append(alt)
-                self.hotspots_samples[cohort]['del'][chr_position].add(sample)
+                # TODO check that all alternates have the same ref when adding
                 self.original_reference['del'][sample][chr_position].add(ref)
             else:
                 # TODO is this possible?
