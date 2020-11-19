@@ -4,6 +4,9 @@ build = string(default='hg38')
 [hotspot_mutations]
 cutoff = integer(default=3)
 
+[hotspot_samples]
+cutoff = integer(default=3)
+
 [reference_nucleotides]
 remove_unknowns = boolean(default=True)
 

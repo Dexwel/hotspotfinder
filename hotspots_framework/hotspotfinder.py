@@ -67,6 +67,7 @@ class HotspotFinder:
                  output_format,
                  is_gzip,
                  hotspot_mutations,
+                 hotspot_mutated_samples,
                  split_alternates,
                  remove_unknown_nucleotides,
                  remove_nonannotated_hotspots,
@@ -87,7 +88,8 @@ class HotspotFinder:
             output_file_warning (str): path to genomic positions where warning is found
             output_format (str): format of output file (TSV or VCF)
             is_gzip (bool): GZIP output files
-            hotspot_mutations (int): cutoff of mutations to define a hotspot
+            hotspot_mutated_samples (int): cutoff of mutations to define a hotspot
+            hotspot_mutated_samples (int): cutoff of number of mutated samples to define a hotspot
             split_alternates (bool): compute hotspots per nucleotide alternate independently
             remove_unknown_nucleotides (bool): remove hotspots with N nucleotides in their reference context
             remove_nonannotated_hotspots (bool): remove hotspots not overlapping genomic elements
@@ -135,6 +137,7 @@ class HotspotFinder:
         self.open_function = gzip.open if is_gzip else open
         self.write_mode = 'wt' if is_gzip else 'w'
         self.hotspot_mutations = hotspot_mutations
+        self.hotspot_mutated_samples = hotspot_mutated_samples
         self.split_alternates = split_alternates
         self.remove_unknown_nucleotides = remove_unknown_nucleotides
         self.remove_nonannotated_hotspots = remove_nonannotated_hotspots
@@ -495,140 +498,144 @@ class HotspotFinder:
                         alternates_counts = ','.join(alternates_counts)
                         alternates_fractions = ','.join(alternates_fractions)
                         n_mut_samples = len(mut_samples)
-                        frac_mut_samples = str(n_mut_samples / n_cohort_samples)
-                        mut_samples_to_alt = ';'.join([f'{k}::{",".join(v)}' for k, v in mut_samples_to_alt.items()])
-                        mut_samples = ';'.join(list(mut_samples))
 
-                        # Sequence info
-                        pentamer_sequence = bgref.refseq(self.genome, chromosome, int(position) - 2, 5)
-                        trimer_sequence = pentamer_sequence[1:4]
-                        if muttype == 'ins':
-                            ref = '-'
-                        elif muttype == 'del':
-                            ref = set()
-                            for sample in mut_samples.split(';'):
-                                ref.update(self.original_reference['del'][sample][chr_pos])
-                            ref = ','.join(list(ref))
-                        else:
-                            ref = pentamer_sequence[2]
+                        # Filter of number of mutated samples
+                        if n_mut_samples >= self.hotspot_mutated_samples:
 
-                        if self.remove_unknown_nucleotides and 'N' in trimer_sequence or 'N' in pentamer_sequence:
-                            break
+                            frac_mut_samples = str(n_mut_samples / n_cohort_samples)
+                            mut_samples_to_alt = ';'.join([f'{k}::{",".join(v)}' for k, v in mut_samples_to_alt.items()])
+                            mut_samples = ';'.join(list(mut_samples))
 
-                        # Warning flag: at least one sample in the dataset contains a warning in this position
-                        warning_flag = 'True' if chr_pos in self.warning_chr_position else 'False'
+                            # Sequence info
+                            pentamer_sequence = bgref.refseq(self.genome, chromosome, int(position) - 2, 5)
+                            trimer_sequence = pentamer_sequence[1:4]
+                            if muttype == 'ins':
+                                ref = '-'
+                            elif muttype == 'del':
+                                ref = set()
+                                for sample in mut_samples.split(';'):
+                                    ref.update(self.original_reference['del'][sample][chr_pos])
+                                ref = ','.join(list(ref))
+                            else:
+                                ref = pentamer_sequence[2]
 
-                        # HotspotFinder filters
-                        hotspotfinder_filters = 2
-
-                        # Mappability
-                        map_data = 'low'
-                        for intersect in self.mappable_regions_tree[chromosome][int(position)]:
-                            if intersect:
-                                map_data = 'high'
-                                hotspotfinder_filters += 1
+                            if self.remove_unknown_nucleotides and 'N' in trimer_sequence or 'N' in pentamer_sequence:
                                 break
 
-                        # Mappability blacklisted regions
-                        blacklist_data = 'PASS'
-                        for intersect in self.blacklisted_regions_tree[chromosome][int(position)]:
-                            if intersect:
-                                blacklist_data = 'FAIL'
+                            # Warning flag: at least one sample in the dataset contains a warning in this position
+                            warning_flag = 'True' if chr_pos in self.warning_chr_position else 'False'
+
+                            # HotspotFinder filters
+                            hotspotfinder_filters = 2
+
+                            # Mappability
+                            map_data = 'low'
+                            for intersect in self.mappable_regions_tree[chromosome][int(position)]:
+                                if intersect:
+                                    map_data = 'high'
+                                    hotspotfinder_filters += 1
+                                    break
+
+                            # Mappability blacklisted regions
+                            blacklist_data = 'PASS'
+                            for intersect in self.blacklisted_regions_tree[chromosome][int(position)]:
+                                if intersect:
+                                    blacklist_data = 'FAIL'
+                                    hotspotfinder_filters -= 1
+                                    break
+
+                            # Variation
+                            var_data = 'PASS'
+                            if set([chr_pos]).intersection(self.variation_data_set):
+                                var_data = 'FAIL'
                                 hotspotfinder_filters -= 1
-                                break
 
-                        # Variation
-                        var_data = 'PASS'
-                        if set([chr_pos]).intersection(self.variation_data_set):
-                            var_data = 'FAIL'
-                            hotspotfinder_filters -= 1
+                            hotspotfinder_filters = 'PASS' if hotspotfinder_filters == 3 else 'FAIL'
 
-                        hotspotfinder_filters = 'PASS' if hotspotfinder_filters == 3 else 'FAIL'
+                            # Genomic elements
+                            genomic_elements_full = []
+                            symbol = set()
+                            geneid = set()
+                            transcriptid = set()
+                            genomic_elements_type = set()
+                            for intersect in self.regions_tree[chromosome][int(position)]:
+                                if intersect:
+                                    genomic_elements_full += [intersect.data]
+                                    isymbol, igeneid, itranscriptid, igenomicelement = intersect.data.split('::')
+                                    symbol.add(isymbol)
+                                    geneid.add(igeneid)
+                                    transcriptid.add(itranscriptid)
+                                    genomic_elements_type.add(igenomicelement)
 
-                        # Genomic elements
-                        genomic_elements_full = []
-                        symbol = set()
-                        geneid = set()
-                        transcriptid = set()
-                        genomic_elements_type = set()
-                        for intersect in self.regions_tree[chromosome][int(position)]:
-                            if intersect:
-                                genomic_elements_full += [intersect.data]
-                                isymbol, igeneid, itranscriptid, igenomicelement = intersect.data.split('::')
-                                symbol.add(isymbol)
-                                geneid.add(igeneid)
-                                transcriptid.add(itranscriptid)
-                                genomic_elements_type.add(igenomicelement)
+                            if genomic_elements_full:
+                                genomic_elements_full = ';'.join(genomic_elements_full)
+                                symbol = ';'.join(sorted(list(symbol)))
+                                geneid = ';'.join(sorted(list(geneid)))
+                                transcriptid = ';'.join(sorted(list(transcriptid)))
+                                genomic_elements_type = ';'.join(sorted(
+                                    list(genomic_elements_type), key=lambda x: self.genomic_elements_priority.get(x, 999)))
+                                genomic_elements_type_priority = genomic_elements_type.split(';')[0]
+                            else:
+                                genomic_elements_full = 'None'
+                                symbol = 'None'
+                                geneid = 'None'
+                                transcriptid = 'None'
+                                genomic_elements_type = 'None'
+                                genomic_elements_type_priority = 'None'
 
-                        if genomic_elements_full:
-                            genomic_elements_full = ';'.join(genomic_elements_full)
-                            symbol = ';'.join(sorted(list(symbol)))
-                            geneid = ';'.join(sorted(list(geneid)))
-                            transcriptid = ';'.join(sorted(list(transcriptid)))
-                            genomic_elements_type = ';'.join(sorted(
-                                list(genomic_elements_type), key=lambda x: self.genomic_elements_priority.get(x, 999)))
-                            genomic_elements_type_priority = genomic_elements_type.split(';')[0]
-                        else:
-                            genomic_elements_full = 'None'
-                            symbol = 'None'
-                            geneid = 'None'
-                            transcriptid = 'None'
-                            genomic_elements_type = 'None'
-                            genomic_elements_type_priority = 'None'
+                            if os.path.isfile(self.genomic_elements):
+                                coding_noncoding = 'Unknown'
+                            else:
+                                coding_noncoding = 'CODING' if 'cds' in genomic_elements_type else 'NONCODING'
 
-                        if os.path.isfile(self.genomic_elements):
-                            coding_noncoding = 'Unknown'
-                        else:
-                            coding_noncoding = 'CODING' if 'cds' in genomic_elements_type else 'NONCODING'
+                            # Merge data
+                            data_to_write = list(map(str,
+                                                     [
+                                                         chromosome,
+                                                         position,
+                                                         chr_pos,
+                                                         hotspot_id_type,
+                                                         muttype,
+                                                         cohort,
+                                                         n_mutations,
+                                                         n_mut_samples,
+                                                         frac_mut_samples,
+                                                         ref,
+                                                         alternates,
+                                                         alternates_counts,
+                                                         alternates_fractions,
+                                                         trimer_sequence,
+                                                         pentamer_sequence,
+                                                         genomic_elements_full,
+                                                         symbol,
+                                                         geneid,
+                                                         transcriptid,
+                                                         genomic_elements_type,
+                                                         genomic_elements_type_priority,
+                                                         coding_noncoding,
+                                                         warning_flag,
+                                                         map_data,
+                                                         blacklist_data,
+                                                         var_data,
+                                                         hotspotfinder_filters,
+                                                         n_cohort_samples,
+                                                         n_cohort_mut_total,
+                                                         n_cohort_mut_snv,
+                                                         n_cohort_mut_mnv,
+                                                         n_cohort_mut_ins,
+                                                         n_cohort_mut_del,
+                                                         mut_samples,
+                                                         mut_samples_to_alt,
+                                                      ]))
 
-                        # Merge data
-                        data_to_write = list(map(str,
-                                                 [
-                                                     chromosome,
-                                                     position,
-                                                     chr_pos,
-                                                     hotspot_id_type,
-                                                     muttype,
-                                                     cohort,
-                                                     n_mutations,
-                                                     n_mut_samples,
-                                                     frac_mut_samples,
-                                                     ref,
-                                                     alternates,
-                                                     alternates_counts,
-                                                     alternates_fractions,
-                                                     trimer_sequence,
-                                                     pentamer_sequence,
-                                                     genomic_elements_full,
-                                                     symbol,
-                                                     geneid,
-                                                     transcriptid,
-                                                     genomic_elements_type,
-                                                     genomic_elements_type_priority,
-                                                     coding_noncoding,
-                                                     warning_flag,
-                                                     map_data,
-                                                     blacklist_data,
-                                                     var_data,
-                                                     hotspotfinder_filters,
-                                                     n_cohort_samples,
-                                                     n_cohort_mut_total,
-                                                     n_cohort_mut_snv,
-                                                     n_cohort_mut_mnv,
-                                                     n_cohort_mut_ins,
-                                                     n_cohort_mut_del,
-                                                     mut_samples,
-                                                     mut_samples_to_alt,
-                                                  ]))
-
-                        # Write
-                        if self.remove_nonannotated_hotspots is True:
-                            if genomic_elements_full != 'None':
+                            # Write
+                            if self.remove_nonannotated_hotspots is True:
+                                if genomic_elements_full != 'None':
+                                    ofd.write('{}\n'.format('\t'.join(data_to_write)))
+                                    hotspot_count += 1
+                            else:
                                 ofd.write('{}\n'.format('\t'.join(data_to_write)))
                                 hotspot_count += 1
-                        else:
-                            ofd.write('{}\n'.format('\t'.join(data_to_write)))
-                            hotspot_count += 1
 
         logger.info(f'Total hotspots identified: {hotspot_count}')
 
@@ -693,8 +700,10 @@ class HotspotFinder:
               help='User input file containing somatic mutations in TSV format')
 @click.option('-o', '--output-directory', default=None, required=True, help='Output directory')
 @click.option('-g', '--genome', default=None, type=click.Choice(['hg38']), help='Genome to use')
-@click.option('-cutoff', '--mutations-cutoff', type=click.IntRange(min=2, max=None, clamp=False), default=None,
+@click.option('-mcutoff', '--mutations-cutoff', type=click.IntRange(min=2, max=None, clamp=False), default=None,
               help='Cutoff of mutations to define a hotspot. Default is 3')
+@click.option('-scutoff', '--samples-cutoff', type=click.IntRange(min=2, max=None, clamp=False), default=None,
+              help='Cutoff of number of mutated samples to define a hotspot. Default is 3')
 @click.option('-group', '--group-by', default=None,
               type=click.Choice(['GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE', 'PLATFORM']),
               help='Header of the column to group hotspots identification')
@@ -708,6 +717,7 @@ def main(
         input_mutations,
         output_directory,
         mutations_cutoff,
+        samples_cutoff,
         genome,
         group_by,
         cores,
@@ -721,6 +731,7 @@ def main(
         input_mutations (str): user path to input mutation data, required
         output_directory (str): path to output directory, required
         mutations_cutoff (int): cutoff of mutations to define a hotspot
+        samples_cutoff (int): cutoff of number of mutated samples to define a hotspot
         genome (str): reference genome
         group_by (str): name of the column to group hotspots identification
         cores (int): number of cpu
@@ -759,6 +770,8 @@ def main(
         genome = config['genome']['build']
     if not mutations_cutoff:
         mutations_cutoff = config['hotspot_mutations']['cutoff']
+    if not samples_cutoff:
+        samples_cutoff = config['hotspot_samples']['cutoff']
     if not group_by:
         group_by = config['group']['groupby']
     if not cores:
@@ -831,7 +844,8 @@ def main(
         f'* Output results directory: {output_directory}',
         f'* Output format: {output_format}',
         f'* GZIP compression: {is_gzip}',
-        f'* Cutoff hotspots mutations: {mutations_cutoff}',
+        f'* Cutoff hotspot mutations: {mutations_cutoff}',
+        f'* Cutoff hotspot mutated samples: {samples_cutoff}',
         f'* Hotspots split alternates: {split_alternates}',
         f'* Remove unknown nucleotides: {remove_unknown_nucleotides}',
         f'* Remove nonannotated hotspots: {remove_nonannotated_hotspots}',
@@ -855,6 +869,7 @@ def main(
         output_format,
         is_gzip,
         mutations_cutoff,
+        samples_cutoff,
         split_alternates,
         remove_unknown_nucleotides,
         remove_nonannotated_hotspots,

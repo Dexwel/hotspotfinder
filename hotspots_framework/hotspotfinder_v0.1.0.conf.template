@@ -5,6 +5,15 @@ build = 'hg38'
 
 
 [hotspot_mutations]
+# Minimum number of mutations to identify a hotspot
+# By definition, hotspots contain at least 2 mutations
+# The number of mutations per hotspot may not be equal to the number
+# of mutated samples per hotspot (e.g., one sample can contain two mutations)
+# By default, hotspots are defined as 3 mutations or more
+cutoff = 3
+
+
+[hotspot_samples]
 # Minimum number of mutated samples to identify a hotspot
 # By definition, hotspots contain at least 2 mutated samples
 # By default, hotspots are defined as 3 mutated samples or more
