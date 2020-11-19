@@ -255,7 +255,7 @@ class HotspotFinder:
                                     chromosome, position, reference_n, ','.join(alts_simplified),
                                     sample, 'warning_3', 'True'
                                 ])))
-                                self.mutation_counts.samples_and_alternates[cohort][muttype][chr_position].discard(sample)
+                                self.mutation_counts.discard_mutation(cohort, sample, muttype, chr_position)
 
         if warning_samples_n > 0:
             logger.warning(f'A total of {warning_samples_n} samples '

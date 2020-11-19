@@ -52,6 +52,14 @@ class MutationCounter:
         # Keep track of samples from each group
         self.cohort_to_sample[cohort].add(sample)
 
+    def discard_mutation(self, cohort, sample, muttype, mut):
+        self.samples_and_alternates[cohort][muttype][mut].pop(sample)
+        self.mutations_by_sample[cohort][sample][muttype].discard(mut)
+        if len(self.mutations_by_sample[cohort][sample][muttype]) == 0:
+            self.mutations_by_sample[cohort][sample].pop(muttype)
+        if len(self.mutations_by_sample[cohort][sample]) == 0:
+            self.mutations_by_sample[cohort].pop(sample)
+
     def get_samples_per_cohort(self):
         for cohort, set_of_samples in self.cohort_to_sample.items():
             yield cohort, set_of_samples
@@ -66,6 +74,12 @@ class MutationCounter:
         for muttype in ('snv', 'mnv', 'ins', 'del'):
             for mut in self.mutations_by_sample[cohort][sample][muttype]:
                 yield mut, muttype, self.samples_and_alternates[cohort][muttype][mut][sample]
+
+        # for cohort in self.mutations_by_sample:
+        #     for sample in self.mutations_by_sample[cohort]:
+        #         for muttype in ('snv', 'mnv', 'ins', 'del'):
+        #             for mut in self.mutations_by_sample[cohort][sample][muttype]:
+        #                 yield mut, muttype, self.samples_and_alternates[cohort][muttype][mut][sample]
 
     def n_samples_cohort(self, cohort):
         return len(self.cohort_to_sample[cohort])
