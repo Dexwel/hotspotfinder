@@ -67,6 +67,7 @@ remove_unknown_reference_nucleotides = True
 # Uncomment the line below to identify hotspots based on column name 'GROUP'
 # groupby = 'GROUP'
 # By default, hotspots are computed using all samples in the input mutations file
+# TODO remove
 groupby = 'none'
 
 

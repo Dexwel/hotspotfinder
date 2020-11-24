@@ -7,6 +7,8 @@ blacklisted_regions = string()
 population_variants = string()
 
 genomic_elements = string(default='all')
+
+# TODO move to finder
 remove_nonannotated_hotspots = boolean(default=True)
 
 [finder]
