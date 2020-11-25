@@ -26,8 +26,10 @@ LOG_LEVELS = {
               help='User input file containing somatic mutations in TSV format')
 @click.option('-o', '--output-directory', default=None, required=True, help='Output directory')
 @click.option('-g', '--genome', default=None, type=click.Choice(['hg38']), help='Genome to use')
-@click.option('-cutoff', '--mutations-cutoff', type=click.IntRange(min=2, max=None, clamp=False), default=None,
+@click.option('-mcutoff', '--mutations-cutoff', type=click.IntRange(min=2, max=None, clamp=False), default=None,
               help='Cutoff of mutations to define a hotspot. Default is 3')
+@click.option('-scutoff', '--samples-cutoff', type=click.IntRange(min=2, max=None, clamp=False), default=None,
+              help='Cutoff of number of mutated samples to define a hotspot. Default is 3')
 @click.option('-group', '--group-by', default=None,
               type=click.Choice(['GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE', 'PLATFORM']),
               help='Header of the column to group hotspots identification')
@@ -41,6 +43,7 @@ def main(
         input_mutations,
         output_directory,
         mutations_cutoff,
+        samples_cutoff,
         genome,
         group_by,
         cores,
@@ -54,6 +57,7 @@ def main(
         input_mutations (str): user path to input mutation data, required
         output_directory (str): path to output directory, required
         mutations_cutoff (int): cutoff of mutations to define a hotspot
+        samples_cutoff (int): cutoff of number of mutated samples to define a hotspot
         genome (str): reference genome
         group_by (str): name of the column to group hotspots identification
         cores (int): number of cpu
@@ -94,6 +98,8 @@ def main(
         config_override['genome'] = genome
     if mutations_cutoff:
         config_override['finder']['mutations_cutoff'] = mutations_cutoff
+    if samples_cutoff:
+        config_override['finder']['samples_cutoff'] = samples_cutoff
     if group_by:
         config_override['finder']['groupby'] = group_by
     if cores:
@@ -138,7 +144,8 @@ def main(
         f"* Genomic elements file: {config['genomic_elements']}",
         f"* Output results directory: {output_directory}",
         f"* Output format: {config['output_format']}",
-        f"* Cutoff hotspots mutations: {config['finder']['mutations_cutoff']}",
+        f"* Cutoff hotspot mutations: {config['finder']['mutations_cutoff']}",
+        f"* Cutoff hotspot mutated samples: {config['finder']['samples_cutoff']}",
         f"* Hotspots split alternates: {config['finder']['split_alternates']}",
         f"* Remove unknown nucleotides: {config['finder']['remove_unknown_reference_nucleotides']}",
         f"* Remove nonannotated hotspots: {config['remove_nonannotated_hotspots']}",

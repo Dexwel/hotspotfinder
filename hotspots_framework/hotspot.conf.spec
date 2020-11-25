@@ -13,6 +13,7 @@ remove_nonannotated_hotspots = boolean(default=True)
 
 [finder]
 mutations_cutoff = integer(default=3)
+samples_cutoff = integer(default=3)
 # TODO remove "remove"
 remove_unknown_reference_nucleotides = boolean(default=True)
 split_alternates = boolean(default=False)

@@ -15,34 +15,37 @@ class MutationCounter:
 
         self.reference_mismatch = 0
 
-    def add_mutation(self, chromosome, position, ref, alt, sample, cohort):
+    def add_mutation(self, chromosome, position, ref, alt, alt_type, sample, cohort):
         chr_position = f'{chromosome}_{position}'
         # Read substitutions of any length
-        if ref != '-' and alt != '-':
-            if len(alt) == 1:
-                muttype = 'snv'
-                # Check reference
-                if ref != bgref.refseq(self.genome, chromosome, position, 1):
-                    self.reference_mismatch += 1
-                    return
-            else:
-                muttype = 'mnv'
-                # TODO reference is not checked
-
-        # Read indels of any length
-        else:
-            # Insertions
+        if alt_type == 'snp':
+            muttype = 'snv'
+            # Check reference
+            if ref != bgref.refseq(self.genome, chromosome, position, 1):
+                self.reference_mismatch += 1
+                return
+        elif alt_type == 'mnp':
+            muttype = 'mnv'
+            # Check reference
+            if ref != bgref.refseq(self.genome, chromosome, position, len(ref)):
+                self.reference_mismatch += 1
+                return
+        elif alt_type == 'indel':
+            # Simple insertions (e.g, G>GA, G>GAAA)
             if ref == '-':
                 muttype = 'ins'
-            # Deletion
+            # Simple deletions (e.g, GT>G, GTG>G)
             elif alt == '-':
                 muttype = 'del'
                 # TODO reference is not checked
                 # TODO check that all alternates have the same ref when adding
                 self.original_reference['del'][sample][chr_position].add(ref)
+            # TODO implement parsing of complex indels (GTG>GA, GTG>GAAA)
             else:
-                # TODO is this possible?
                 return
+        else:
+            # TODO is this possible?
+            return
 
         self.samples_and_alternates[cohort][muttype][chr_position][sample].append(alt)
         self.mutations_by_sample[cohort][sample][muttype].add(chr_position)

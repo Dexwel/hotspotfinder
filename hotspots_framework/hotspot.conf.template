@@ -9,9 +9,6 @@ cores = 1
 # Format of output file: 'tsv'
 output_format = 'tsv'
 
-# GZIP compression of output file
-gzip = True
-
 
 # Read two files containing genome mappability data
 # Please, check that your files use the same reference genome used in this analysis
@@ -55,6 +52,13 @@ remove_nonannotated_hotspots = True
 # By default, hotspots are defined as 3 mutated samples or more
 mutations_cutoff = 3
 
+
+# Minimum number of mutations to identify a hotspot
+# By definition, hotspots contain at least 2 mutations
+# The number of mutations per hotspot may not be equal to the number
+# of mutated samples per hotspot (e.g., one sample can contain two mutations)
+# By default, hotspots are defined as 3 mutations or more
+samples_cutoff = 3
 
 # Reference nucleotide context can contain unknown nucleotides ('N')
 # By default, hotspots containing one 'N' in their tri- and/or penta-nucleotide
