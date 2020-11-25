@@ -401,19 +401,17 @@ class HotspotFinder:
 
                         # Mappability
                         map_data = 'low'
-                        for intersect in self.mappable_regions_tree[chromosome][int(position)]:
-                            if intersect:
-                                map_data = 'high'
-                                hotspotfinder_filters += 1
-                                break
+                        for _ in self.mappable_regions_tree[chromosome][int(position)]:
+                            map_data = 'high'
+                            hotspotfinder_filters += 1
+                            break
 
                         # Mappability blacklisted regions
                         blacklist_data = 'PASS'
-                        for intersect in self.blacklisted_regions_tree[chromosome][int(position)]:
-                            if intersect:
-                                blacklist_data = 'FAIL'
-                                hotspotfinder_filters -= 1
-                                break
+                        for _ in self.blacklisted_regions_tree[chromosome][int(position)]:
+                            blacklist_data = 'FAIL'
+                            hotspotfinder_filters -= 1
+                            break
 
                         # Variation
                         var_data = 'PASS'
@@ -431,7 +429,7 @@ class HotspotFinder:
                         genomic_elements_type = set()
                         for intersect in self.regions_tree[chromosome][int(position)]:
                             if intersect:
-                                genomic_elements_full += [intersect.data]
+                                genomic_elements_full.append(intersect.data)
                                 isymbol, igeneid, itranscriptid, igenomicelement = intersect.data.split('::')
                                 symbol.add(isymbol)
                                 geneid.add(igeneid)
@@ -500,10 +498,8 @@ class HotspotFinder:
                                                   ]))
 
                         # Write
-                        if self.remove_nonannotated_hotspots is True:
-                            if genomic_elements_full != 'None':
-                                ofd.write('{}\n'.format('\t'.join(data_to_write)))
-                                hotspot_count += 1
+                        if self.remove_nonannotated_hotspots is True and genomic_elements_full == 'None':
+                            pass
                         else:
                             ofd.write('{}\n'.format('\t'.join(data_to_write)))
                             hotspot_count += 1
