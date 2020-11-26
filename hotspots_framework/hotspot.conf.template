@@ -67,14 +67,13 @@ remove_unknown_reference_nucleotides = True
 
 # Identify hotspots in different groups of samples in the input mutations file
 # Column names to group samples are 'GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE' and 'PLATFORM'
+# By default, hotspots are computed using all samples in the input mutations file
 # Uncomment the line below to identify hotspots based on column name 'GROUP'
 # groupby = 'GROUP'
-# By default, hotspots are computed using all samples in the input mutations file
-# TODO remove
-groupby = 'none'
 
 
 # Compute hotspots per nucleotide alternate independently or merged
+# In the current version this is only available for SNVs
 # By default, hotspots merge different alternates
 split_alternates = False
 
