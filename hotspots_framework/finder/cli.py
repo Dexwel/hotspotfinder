@@ -35,7 +35,7 @@ LOG_LEVELS = {
               help='Header of the column to group hotspots identification')
 @click.option('-c', '--cores', type=click.IntRange(min=1, max=os.cpu_count(), clamp=False), default=None,
               help='Number of cores to use in the computation. By default it uses all available cores.')
-@click.option('-conf', '--configuration-file', default='./hotspotfinder_v0.1.0.conf',
+@click.option('-conf', '--configuration-file', default=None,
               required=False, type=click.Path(exists=True), help='User input configuration file')
 @click.option('--log-level', default='info', help='Verbosity of the logger',
               type=click.Choice(['debug', 'info', 'warning', 'error', 'critical']))
@@ -148,7 +148,7 @@ def main(
         f"* Cutoff hotspot mutated samples: {config['finder']['samples_cutoff']}",
         f"* Hotspots split alternates: {config['finder']['split_alternates']}",
         f"* Remove unknown nucleotides: {config['finder']['remove_unknown_reference_nucleotides']}",
-        f"* Remove nonannotated hotspots: {config['remove_nonannotated_hotspots']}",
+        f"* Remove nonannotated hotspots: {config['finder']['remove_nonannotated_hotspots']}",
         f"* Genome: {config['genome']}",
         f"* Group analysis by: {config['finder']['groupby']}",
         f"* Cores: {config['cores']}",

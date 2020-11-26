@@ -6,10 +6,11 @@ genome = 'hg38'
 # Number of cores
 cores = 1
 
-# Format of output file: 'tsv'
-output_format = 'tsv'
+# Format of output file: 'tsv', 'tsv.gz'
+output_format = 'tsv.gz'
 
 
+# Mappability
 # Read two files containing genome mappability data
 # Please, check that your files use the same reference genome used in this analysis
 # mappable_regions contains regions of high mappability in TSV format
@@ -22,14 +23,14 @@ mappable_regions = "%(bgdata://genomemappability/hg38/gem_100bp)"
 # Alternatively, you can provide a path to a file
 blacklisted_regions = "%(bgdata://genomemappability/hg38/blacklist)"
 
-
+# Population variants
 # Read a file containing population variants with allele frequency >= 1%
 # Please, check that your files use the same reference genome used in this analysis
 # By default, this regions are obtained from bgdata
 # Alternatively, you can provide a path to a tabix file
 population_variants = "%(bgdata://populationvariants/hg38/gnomad_v3_AF1)"
 
-
+# Genomic elements
 # Read a file with genomic regions annotations to annotate hotspots
 # By default, this regions are obtained from bgdata
 # Alternatively, you can provide a path to a file
@@ -39,18 +40,12 @@ population_variants = "%(bgdata://populationvariants/hg38/gnomad_v3_AF1)"
 # By default, all regions in bgdata are used:
 genomic_elements = 'all'
 
-# By default, hotspots not overlapping genomic elements are removed from the output file
-# Set variable to False if you want to keep these hotspots in the output file
-remove_nonannotated_hotspots = True
-
-
 
 [finder]
 
 # Minimum number of mutated samples to identify a hotspot
 # By default, hotspots are defined as 3 mutated samples or more
 samples_cutoff = 3
-
 
 # Minimum number of mutations to identify a hotspot
 # By definition, hotspots contain at least 2 mutations
@@ -64,13 +59,15 @@ mutations_cutoff = 3
 # context are discarded
 remove_unknown_reference_nucleotides = True
 
+# By default, hotspots not overlapping genomic elements are removed from the output file
+# Set variable to False if you want to keep these hotspots in the output file
+remove_nonannotated_hotspots = True
 
 # Identify hotspots in different groups of samples in the input mutations file
 # Column names to group samples are 'GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE' and 'PLATFORM'
 # By default, hotspots are computed using all samples in the input mutations file
 # Uncomment the line below to identify hotspots based on column name 'GROUP'
 # groupby = 'GROUP'
-
 
 # Compute hotspots per nucleotide alternate independently or merged
 # In the current version this is only available for SNVs
