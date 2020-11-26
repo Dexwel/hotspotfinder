@@ -48,9 +48,8 @@ remove_nonannotated_hotspots = True
 [finder]
 
 # Minimum number of mutated samples to identify a hotspot
-# By definition, hotspots contain at least 2 mutated samples
 # By default, hotspots are defined as 3 mutated samples or more
-mutations_cutoff = 3
+samples_cutoff = 3
 
 
 # Minimum number of mutations to identify a hotspot
@@ -58,7 +57,7 @@ mutations_cutoff = 3
 # The number of mutations per hotspot may not be equal to the number
 # of mutated samples per hotspot (e.g., one sample can contain two mutations)
 # By default, hotspots are defined as 3 mutations or more
-samples_cutoff = 3
+mutations_cutoff = 3
 
 # Reference nucleotide context can contain unknown nucleotides ('N')
 # By default, hotspots containing one 'N' in their tri- and/or penta-nucleotide
