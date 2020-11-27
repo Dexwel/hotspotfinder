@@ -10,6 +10,7 @@ genomic_elements = string(default='all')
 
 
 [finder]
+# TODO can we add a minimum number? 3
 samples_cutoff = integer(default=3)
 mutations_cutoff = integer(default=3)
 # TODO remove "remove"
