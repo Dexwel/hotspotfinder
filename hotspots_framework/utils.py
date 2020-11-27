@@ -7,4 +7,4 @@ def file_open(file, mode='wt'):
         open_function = gzip.open
     else:
         open_function = open
-    return open(file, mode=mode)
+    return open_function(file, mode=mode)
