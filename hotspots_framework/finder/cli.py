@@ -111,6 +111,9 @@ def main(
     # Read configuration file
     config = configuration.load(config_file=configuration_file, override=config_override)
 
+    # TODO if not config['finder']['annotate'], skip next lines?
+    #config['finder']['annotate']
+
     # Mappability
     if not os.path.isfile(config['mappable_regions']):
         raise HotspotFinderError(f"Mappable regions file does not exist: {config['mappability']['mappable_regions']}")
@@ -138,6 +141,7 @@ def main(
     logger.info('\n'.join([
         '\n'
         f"* Input mutations file: {input_mutations}",
+        f"* Annotate hotspots: {config['finder']['annotate']}",
         f"* Mapable regions file: {config['mappable_regions']}",
         f"* Blacklisted regions file: {config['blacklisted_regions']}",
         f"* Population variants directory: {config['population_variants']}",
@@ -154,14 +158,13 @@ def main(
         f"* Cores: {config['cores']}",
     ]))
 
-    # Generate stage 1 hotspots (no annotations)
+    # Run HotspotFinder
     experiment = HotspotFinder(
         input_mutations,
         output_file_results,
         output_file_warning,
         config
     )
-
     experiment.run()
     logger.info('HotspotFinder analysis finished!')
 

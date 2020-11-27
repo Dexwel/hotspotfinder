@@ -74,5 +74,8 @@ remove_nonannotated_hotspots = True
 # By default, hotspots merge different alternates
 split_alternates = False
 
+# Annotate hotspots with genomic information
+# By default, hotspots are annotated
+annotate = True
 
 

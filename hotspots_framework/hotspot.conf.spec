@@ -17,5 +17,6 @@ remove_unknown_reference_nucleotides = boolean(default=True)
 remove_nonannotated_hotspots = boolean(default=True)
 groupby = option('GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE', 'PLATFORM', default=None)
 split_alternates = boolean(default=False)
+annotate = boolean(default=True)
 
 
