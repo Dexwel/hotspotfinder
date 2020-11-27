@@ -21,6 +21,8 @@ def load(config_file, override=None):
         :class:`bgconfig.BGConfig`: configuration as a :obj:`dict`
 
     """
+    if not config_file:
+        config_file = path.join(path.dirname(__file__), "hotspot.conf")
     config_template = path.join(path.dirname(__file__), "hotspot.conf.template")
     config_spec = path.join(path.dirname(__file__), "hotspot.conf.spec")
 
