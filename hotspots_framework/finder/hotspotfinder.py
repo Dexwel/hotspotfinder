@@ -275,7 +275,7 @@ class HotspotFinder:
 
         for cohort, data in self.cohort_to_mutation_alts.items():
             for muttype, mutated_positions in data.items():
-                if self.split_alternates and muttype == 'snv':
+                if self.split_alternates:
                     for hotspot_id, list_of_alternates in mutated_positions.items():
                         for alternate in set(list_of_alternates):
                             count = list_of_alternates.count(alternate)
@@ -334,6 +334,8 @@ class HotspotFinder:
         hotspot_count = 0
         with file_open(self.output_file_hotspots) as ofd:
             ofd.write('{}\n'.format('\t'.join(header)))
+
+            # Cohort data
             for cohort, data in self.hotspots.items():
                 n_cohort_samples = len(self.mutation_counts.get_samples(cohort))
                 n_cohort_mut_snv = self.mutation_counts.n_mutations_cohort(cohort, 'snv')
@@ -342,40 +344,46 @@ class HotspotFinder:
                 n_cohort_mut_del = self.mutation_counts.n_mutations_cohort(cohort, 'del')
                 n_cohort_mut_total = n_cohort_mut_snv + n_cohort_mut_mnv + \
                                      n_cohort_mut_ins + n_cohort_mut_del
+                # Read hotspots
                 for muttype, hotspots in data.items():
                     for hotspot_id_type, list_of_alternates in sorted(hotspots.items(), key=lambda item: len(item[1]), reverse=True):
-                        n_mutations = len(list_of_alternates)
+
+                        # Chromosome and position
                         chromosome, position, _ = hotspot_id_type.split('>')[0].split('_')    # remove SNV alternate
                         chr_pos = f'{chromosome}_{position}'
 
+                        # Number of mutations
+                        n_mutations = len(list_of_alternates)
+
+                        # Get number of mutated samples and alternates
                         mut_samples = self.mutation_counts.get_samples_per_mutation(chr_pos, muttype, cohort)
-                        # Alternates
                         mut_samples_to_alt = self.mutation_counts.get_alternates_per_mutation(chr_pos, muttype, cohort)
 
-                        alternates_counts = []
-                        alternates_fractions = []
-                        if muttype == 'snv':
-                            if self.split_alternates:
-                                alternate = hotspot_id_type.split('>')[1]
-                                mut_samples = set()
-                                for sample, sample_alternates in mut_samples_to_alt.items():
-                                    for unique_alternate in sample_alternates:
-                                        if unique_alternate == alternate:
-                                            mut_samples.add(sample)
-                                mut_samples_to_alt = {k: v for k, v in mut_samples_to_alt.items() if k in mut_samples}
-                                list_of_alternates = list(itertools.chain.from_iterable(list(mut_samples_to_alt.values())))
-                            for nucleotide in nucleotides:
-                                count = list_of_alternates.count(nucleotide)
-                                alternates_counts.append(f'{nucleotide}={count}')
-                                alternates_fractions.append(f'{nucleotide}={count/n_mutations}')
-                        else:
-                            alternates_counts = [f'{a}={list_of_alternates.count(a)}' for a in set(list_of_alternates)]
-                            alternates_fractions = [f'{a}={list_of_alternates.count(a) / n_mutations}' for a in set(list_of_alternates)]
+                        # If split alternates, check which samples have the alternate of the hotspot and update variables
+                        if self.split_alternates:
+                            alternate = hotspot_id_type.split('>')[1]
+                            print(hotspot_id_type, alternate)
+                            mut_samples = set()
+                            for sample, sample_alternates in mut_samples_to_alt.items():
+                                for unique_alternate in sample_alternates:
+                                    if unique_alternate == alternate:
+                                        mut_samples.add(sample)
+                            mut_samples_to_alt = {k: v for k, v in mut_samples_to_alt.items() if k in mut_samples}
+                            list_of_alternates = list(itertools.chain.from_iterable(list(mut_samples_to_alt.values())))
 
-                        alternates = ','.join(sorted(list(set(list_of_alternates))))
-                        alternates_counts = ','.join(alternates_counts)
-                        alternates_fractions = ','.join(alternates_fractions)
+                        # Number of mutated samples
                         n_mut_samples = len(mut_samples)
+
+                        # Alternates
+                        if muttype != 'del':
+                            alternates = ','.join(sorted(list(set(list_of_alternates))))
+                        else:
+                            alternates = '-'
+                        alternates_counts = [f'{a}={list_of_alternates.count(a)}' for a in set(list_of_alternates)]
+                        alternates_counts = ','.join(alternates_counts)
+                        alternates_fractions = [f'{a}={list_of_alternates.count(a) / n_mutations}' for a in
+                                               set(list_of_alternates)]
+                        alternates_fractions = ','.join(alternates_fractions)
 
                         # Filter of number of mutated samples
                         if n_mut_samples >= self.hotspot_mutated_samples:
@@ -400,15 +408,19 @@ class HotspotFinder:
                             if self.remove_unknown_nucleotides and 'N' in trimer_sequence or 'N' in pentamer_sequence:
                                 break
 
-                            logger.debug(
-                                hotspot_id_type,
-                                muttype,
-                                cohort,
-                                n_mutations,
-                                n_mut_samples,
-                                ref,
-                                alternates,
-                                mut_samples_to_alt
+                            logger.debug(list(map(str, [
+                                                      hotspot_id_type,
+                                                      muttype,
+                                                      cohort,
+                                                      n_mutations,
+                                                      n_mut_samples,
+                                                      ref,
+                                                      alternates,
+                                                      alternates_counts,
+                                                      alternates_fractions,
+                                                      mut_samples_to_alt
+                                                  ]))
+
                             )
 
                             # Warning flag: at least one sample in the dataset contains a warning in this position
@@ -549,7 +561,6 @@ class HotspotFinder:
                     for hotspot_id_type, list_of_alternates in sorted(hotspots.items(), key=lambda item: len(item[1]),
                                                                       reverse=True):
                         print(cohort, hotspot_id_type, list_of_alternates)
-
             quit()
 
         # Load genomic elements into IntervalTree

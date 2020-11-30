@@ -47,8 +47,9 @@ class MutationCounter:
                 if ref != bgref.refseq(self.genome, chromosome, position, len(ref)):
                     self.reference_mismatch += 1
                     return
-                # TODO check that all alternates have the same ref when adding --> add option
+                # todo remove original_reference
                 self.original_reference['del'][sample][chr_position].add(ref)
+                alt = ref
             else:
                 # TODO implement parsing of complex indels (GTG>GA, GTG>GAAA)?
                 return
