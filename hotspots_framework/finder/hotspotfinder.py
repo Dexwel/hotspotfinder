@@ -60,30 +60,33 @@ class HotspotFinder:
         self.output_file_hotspots = output_file_results
         self.output_file_warning = output_file_warning
 
-        # Mappability data
-        self.mappable_regions_tree = self.load_mappability(config['mappable_regions'])
-        self.blacklisted_regions_tree = self.load_mappability(config['blacklisted_regions'])
-        logger.info('Mappability data loaded')
+        if config['finder']['annotate']:
 
-        # Variation data
-        self.variation_data_set = self.load_variation(config['population_variants'])
+            # Mappability data
+            self.mappable_regions_tree = self.load_mappability(config['mappable_regions'])
+            self.blacklisted_regions_tree = self.load_mappability(config['blacklisted_regions'])
+            logger.info('Mappability data loaded')
 
-        # Genomic elements data
-        self.genomic_elements = config['genomic_elements']
-        self.regions_tree = None
+            # Variation data
+            self.variation_data_set = self.load_variation(config['population_variants'])
+            logger.info('Population variants data loaded')
 
-        self.genomic_elements_priority = {e: i for i, e in enumerate(HotspotFinder.GENOMIC_ELEMENTS)}
+            # Genomic elements data
+            self.genomic_elements = config['genomic_elements']
+            self.regions_tree = None
+
+            self.genomic_elements_priority = {e: i for i, e in enumerate(HotspotFinder.GENOMIC_ELEMENTS)}
 
         # Params
-        self.output_format = config['output_format']
-        self.hotspot_mutations = config['finder']['mutations_cutoff']
-        self.hotspot_mutated_samples = config['finder']['samples_cutoff']
-        self.split_alternates = config['finder']['split_alternates']
-        self.remove_unknown_nucleotides = config['finder']['remove_unknown_reference_nucleotides']
-        self.remove_nonannotated_hotspots = config['remove_nonannotated_hotspots']
         self.genome = config['genome']
-        self.group_by = config['finder']['groupby']
         self.cores = config['cores']
+        self.hotspot_mutated_samples = config['finder']['samples_cutoff']
+        self.hotspot_mutations = config['finder']['mutations_cutoff']
+        self.remove_unknown_nucleotides = config['finder']['remove_unknown_reference_nucleotides']
+        self.remove_nonannotated_hotspots = config['finder']['remove_nonannotated_hotspots']
+        self.group_by = config['finder']['groupby']
+        self.split_alternates = config['finder']['split_alternates']
+        self.annotate_hotspots = config['finder']['annotate']
 
         # Initialize variables to load data
         self.mutation_counts = MutationCounter(self.genome)
@@ -141,7 +144,7 @@ class HotspotFinder:
         Returns:
             tree (dict): tree with regions, keys are chromosomes, data are regions
         """
-
+        # FIXME this will fail for some genomic elements (CREs) that have a different format
         tree = defaultdict(IntervalTree)
         for genomic_element, file in files:
             with gzip.open(file, 'rt') as fd:
@@ -179,14 +182,12 @@ class HotspotFinder:
                 cohort = row[self.group_by]
             else:
                 cohort = self.input_file.split('/')[-1].split('.')[0]
-
             # Read mutations in autosomal + sexual chromosomes
             if chromosome in set(HotspotFinder.CHROMOSOMES) and ref != alt:
-
                 self.mutation_counts.add_mutation(chromosome, position, ref, alt, alt_type, sample, cohort)
 
         if self.mutation_counts.reference_mismatch > 0:
-            logger.warning(f'A total of {self.mutation_counts.reference_mismatch} SNVs/MNVs REF nucleotides do not match the reference. '
+            logger.warning(f'A total of {self.mutation_counts.reference_mismatch} SNV/MNV/deletion REF nucleotides do not match the reference. '
                            f'These mutations are discarded from the analysis')
 
         # Just logging information
@@ -196,9 +197,9 @@ class HotspotFinder:
                 nmuts = self.mutation_counts.n_mutations_cohort(cohort, muttype)
                 logger.info(f'Input {muttype} mutations in {cohort} = {nmuts}')
                 muts_cohort += nmuts
-            logger.info(f'Input total mutations in {cohort} = {nmuts}')
+            logger.info(f'Input total mutations in {cohort} = {muts_cohort}')
 
-        # Check mutations per sample and add to cohort_to_mutation dicts
+        # Check mutations per sample
         # Write warning positions
         header = ['CHROMOSOME', 'POSITION', 'REF', 'ALT', 'SAMPLE', 'WARNING', 'SKIP']
         with file_open(self.output_file_warning) as ofd:
@@ -225,13 +226,12 @@ class HotspotFinder:
                             self.warning_chr_position.add(chr_position)
                             if len(alts_unique) == 1:
                                 logger.debug(
-                                    f'Sample "{sample}" position chr{chr_position} has 2 repeated alternates: '
-                                    f'{alts_simplified}.'
-                                    f'Number of mutations and number of mutated samples will not match.'
+                                    f'Sample "{sample}" position chr{chr_position} has repeated alternates: '
+                                    f'{alts_simplified}. All alternates are kept, but '
+                                    f'the number of mutations and the number of mutated samples will not match.'
                                 )
                                 alt, muttype = list(alts_unique)[0]
-                                # TODO check becuase the number might be more than 2
-                                self.cohort_to_mutation_alts[cohort][muttype][f'{chr_position}_{muttype}'] += [alt, alt]
+                                self.cohort_to_mutation_alts[cohort][muttype][f'{chr_position}_{muttype}'] += alts_simplified
                                 reference_n = bgref.refseq(self.genome, chromosome, int(position), 1)
                                 ofd.write('{}\n'.format('\t'.join([
                                     chromosome, position, reference_n, ','.join(alts_simplified),
@@ -240,15 +240,15 @@ class HotspotFinder:
                             elif len(alts_unique) == 2:
                                 logger.debug(
                                     f'Sample "{sample}" position chr{chr_position} has 2 different alternates: '
-                                    f'{alts_simplified}.'
-                                    f'Number of mutations and number of mutated samples will not match.'
+                                    f'{alts_simplified}. All alternates are kept, but '
+                                    f'the number of mutations and the number of mutated samples will not match.'
                                 )
                                 reference_n = bgref.refseq(self.genome, chromosome, int(position), 1)
                                 ofd.write('{}\n'.format('\t'.join([
                                     chromosome, position, reference_n, ','.join(alts_simplified),
                                     sample, 'warning_2', 'False'
                                 ])))
-                                for mutation in alts_unique:
+                                for mutation in alts:
                                     alt, muttype = mutation
                                     self.cohort_to_mutation_alts[cohort][muttype][f'{chr_position}_{muttype}'] += [alt]
                             else:
@@ -260,12 +260,13 @@ class HotspotFinder:
                                     chromosome, position, reference_n, ','.join(alts_simplified),
                                     sample, 'warning_3', 'True'
                                 ])))
+                                # FIXME muttype
                                 self.mutation_counts.discard_mutation(cohort, sample, muttype, chr_position)
 
         if warning_samples_n > 0:
-            logger.warning(f'A total of {warning_samples_n} samples '
-                           f'contain mutations flagged with warnings. Please check '
-                           f'{self.output_file_warning}')
+            logger.warning(f'A total of {warning_samples_n} sample{"s" if warning_samples_n > 1 else ""} '
+                           f'contain{"" if warning_samples_n > 1 else "s"} mutations flagged with warnings. '
+                           f'Please check: {self.output_file_warning}')
 
     def find_hotspots(self):
         """
@@ -399,6 +400,17 @@ class HotspotFinder:
                             if self.remove_unknown_nucleotides and 'N' in trimer_sequence or 'N' in pentamer_sequence:
                                 break
 
+                            logger.debug(
+                                hotspot_id_type,
+                                muttype,
+                                cohort,
+                                n_mutations,
+                                n_mut_samples,
+                                ref,
+                                alternates,
+                                mut_samples_to_alt
+                            )
+
                             # Warning flag: at least one sample in the dataset contains a warning in this position
                             warning_flag = 'True' if chr_pos in self.warning_chr_position else 'False'
 
@@ -529,6 +541,17 @@ class HotspotFinder:
         self.find_hotspots()
         logger.info('Hotspots identified')
 
+        # FIXME this is only for testing
+        if not self.annotate_hotspots:
+
+            for cohort, data in self.hotspots.items():
+                for muttype, hotspots in data.items():
+                    for hotspot_id_type, list_of_alternates in sorted(hotspots.items(), key=lambda item: len(item[1]),
+                                                                      reverse=True):
+                        print(cohort, hotspot_id_type, list_of_alternates)
+
+            quit()
+
         # Load genomic elements into IntervalTree
         regions_data = []
         if os.path.isfile(self.genomic_elements):
@@ -543,6 +566,6 @@ class HotspotFinder:
         logger.info('Genomic regions loaded')
 
         # Write info
-        # TODO implement VCF output
         self.write_hotspots()
         logger.info('Hotspots saved to file')
+
