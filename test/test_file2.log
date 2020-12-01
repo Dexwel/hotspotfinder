@@ -1,0 +1,39 @@
+2020-12-01 09:53:46,283 [8418] INFO     hotspotsframework: HotspotFinder
+2020-12-01 09:53:46,284 [8418] INFO     hotspotsframework: Initializing HotspotFinder...
+2020-12-01 09:53:49,507 [8418] INFO     hotspotsframework: Analysis parameters loaded
+2020-12-01 09:53:50,195 [8418] INFO     hotspotsframework: 
+* Input mutations file: /home/carnedo/projects/hotspots_framework/hotspots_framework/test/test_file2.txt
+* Annotate hotspots: True
+* Mapable regions file: /workspace/datasets/bgdata/local/genomemappability/hg38/gem_100bp-20201016/hg38_100bp.coverage.regions.gz
+* Blacklisted regions file: /workspace/datasets/bgdata/local/genomemappability/hg38/blacklist-20201016/ENCFF356LFX.bed.gz
+* Population variants file: /workspace/datasets/bgdata/local/populationvariants/hg38/gnomad_v3_AF1-20201016/gnomad.genomes.r3.0.sites.allchr.af_0.01.tsv.gz
+* Repeats file: /workspace/projects/noncoding_regions/data/repeatmasker/hg38_repeatmasker.reformat.gz
+* Ig-TR regions file: /workspace/projects/genomic_regions/hg38/release_2/IG_TR_loci/hg38_IG_TR_loci.tstart_to_tend.gz
+* Genomic elements file: cds
+* Output results directory: /home/carnedo/projects/hotspots_framework/hotspots_framework/test/
+* Output format: tsv.gz
+* Cutoff hotspot mutations: 3
+* Cutoff hotspot mutated samples: 3
+* Hotspots split alternates: False
+* Remove unknown nucleotides: True
+* Remove nonannotated hotspots: False
+* Genome: hg38
+* Group analysis by: None
+* Cores: 1
+2020-12-01 09:54:37,045 [8418] INFO     hotspotsframework: Mappability data loaded
+2020-12-01 09:54:59,452 [8418] INFO     hotspotsframework: Population variants data loaded
+2020-12-01 10:00:20,988 [8418] INFO     hotspotsframework: Repeats data loaded
+2020-12-01 10:00:21,363 [8418] INFO     hotspotsframework: Ig-TR data loaded
+2020-12-01 10:00:21,824 [8418] WARNING  hotspotsframework: A total of 3 SNV/MNV/deletion REF nucleotides do not match the reference. These mutations are discarded from the analysis
+2020-12-01 10:00:21,824 [8418] INFO     hotspotsframework: Input snv mutations in test_file2 = 22
+2020-12-01 10:00:21,825 [8418] INFO     hotspotsframework: Input mnv mutations in test_file2 = 3
+2020-12-01 10:00:21,825 [8418] INFO     hotspotsframework: Input ins mutations in test_file2 = 3
+2020-12-01 10:00:21,825 [8418] INFO     hotspotsframework: Input del mutations in test_file2 = 5
+2020-12-01 10:00:21,825 [8418] INFO     hotspotsframework: Input total mutations in test_file2 = 33
+2020-12-01 10:00:21,827 [8418] WARNING  hotspotsframework: A total of 3 samples contain mutations flagged with warnings. Please check: /home/carnedo/projects/hotspots_framework/hotspots_framework/test/test_file2.warningpositions.txt.gz
+2020-12-01 10:00:21,827 [8418] INFO     hotspotsframework: Mutations parsed
+2020-12-01 10:00:21,827 [8418] INFO     hotspotsframework: Hotspots identified
+2020-12-01 10:00:48,682 [8418] INFO     hotspotsframework: Genomic regions loaded
+2020-12-01 10:00:48,684 [8418] INFO     hotspotsframework: Total hotspots identified: 7
+2020-12-01 10:00:48,684 [8418] INFO     hotspotsframework: Hotspots saved to file
+2020-12-01 10:00:48,684 [8418] INFO     hotspotsframework: HotspotFinder analysis finished!
