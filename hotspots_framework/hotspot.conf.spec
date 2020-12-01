@@ -7,7 +7,7 @@ blacklisted_regions = string()
 population_variants = string()
 repeats = string()
 ig_tr_regions = string()
-genomic_elements = string(default='all')
+genomic_elements = string()
 
 [finder]
 # TODO can we add a minimum number? 3

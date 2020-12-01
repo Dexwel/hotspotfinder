@@ -44,11 +44,7 @@ ig_tr_regions = '/workspace/projects/genomic_regions/hg38/release_2/IG_TR_loci/h
 # Read a file with genomic regions annotations to annotate hotspots
 # By default, this regions are obtained from bgdata
 # Alternatively, you can provide a path to a file
-# If you want to annotate all regions in bgdata, please set the variable to 'all'
-# If you want to restrict the analysis to a single category, you can use
-# 'cds', 'splice_sites', '5utr', '3utr', 'proximal_promoters', 'distal_promoters', 'introns'
-# By default, all regions in bgdata are used:
-genomic_elements = 'all'
+genomic_elements = '/workspace/projects/noncoding_regions/data/regions/genomic_elements/new/hg38_release2_annotations.txt.gz'
 
 
 [finder]

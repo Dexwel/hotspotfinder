@@ -20,7 +20,7 @@ LOG_LEVELS = {
     'critical': logging.CRITICAL
 }
 
-
+# TODO remove genome and cores
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.option('-i', '--input-mutations', default=None, required=True, type=click.Path(exists=True),
               help='User input file containing somatic mutations in TSV format')
@@ -136,9 +136,7 @@ def main(
             f"IG-TR regions file does not exist: {config['ig_tr_regions']}")
 
     # Genomic elements
-    if not os.path.isfile(config['genomic_elements']) and \
-            not config['genomic_elements'] in \
-                {'all', 'cds', '5utr', '3utr', 'proximal_promoters', 'distal_promoters', 'introns'}:
+    if not os.path.isfile(config['genomic_elements']):
         raise HotspotFinderError(f"Genomic regions file does not exist: {config['genomic_elements']}")
 
     # Output file names
@@ -170,6 +168,7 @@ def main(
         f"* Cores: {config['cores']}",
     ]))
 
+    logger.info('Loading annotations files...')
     # Run HotspotFinder
     experiment = HotspotFinder(
         input_mutations,
@@ -177,6 +176,7 @@ def main(
         output_file_warning,
         config
     )
+
     experiment.run()
     logger.info('HotspotFinder analysis finished!')
 
