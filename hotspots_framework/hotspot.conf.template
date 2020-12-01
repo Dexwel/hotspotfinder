@@ -2,7 +2,6 @@
 # Genomes supported in the current version: hg38
 genome = 'hg38'
 
-
 # Number of cores
 cores = 1
 
@@ -17,18 +16,29 @@ output_format = 'tsv.gz'
 # By default, this regions are obtained from bgdata
 # Alternatively, you can provide a path to a file
 mappable_regions = "%(bgdata://genomemappability/hg38/gem_100bp)"
-
 # blacklisted_regions contains artifact regions of low mappability
-# By default, this regions are obtained from bgdata
+# By default, these regions are obtained from bgdata
 # Alternatively, you can provide a path to a file
 blacklisted_regions = "%(bgdata://genomemappability/hg38/blacklist)"
 
 # Population variants
 # Read a file containing population variants with allele frequency >= 1%
 # Please, check that your files use the same reference genome used in this analysis
-# By default, this regions are obtained from bgdata
-# Alternatively, you can provide a path to a tabix file
+# By default, these regions are obtained from bgdata
+# Alternatively, you can provide a path to a file
 population_variants = "%(bgdata://populationvariants/hg38/gnomad_v3_AF1)"
+
+# Repeats
+# Read a file containing repeatitive DNA sequences.
+# By default, these regions are obtained from bgdata
+# Alternatively, you can provide a path to a file
+repeats = '/workspace/projects/noncoding_regions/data/repeatmasker/hg38_repeatmasker.reformat.gz'
+
+# Ig and T-cell receptor regions
+# Read a file containing Ig and TR regions.
+# By default, these regions are obtained from bgdata
+# Alternatively, you can provide a path to a file
+ig_tr_regions = '/workspace/projects/genomic_regions/hg38/release_2/IG_TR_loci/hg38_IG_TR_loci.tstart_to_tend.gz'
 
 # Genomic elements
 # Read a file with genomic regions annotations to annotate hotspots

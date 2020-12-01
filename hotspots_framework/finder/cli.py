@@ -116,20 +116,30 @@ def main(
 
     # Mappability
     if not os.path.isfile(config['mappable_regions']):
-        raise HotspotFinderError(f"Mappable regions file does not exist: {config['mappability']['mappable_regions']}")
+        raise HotspotFinderError(f"Mappable regions file does not exist: {config['mappable_regions']}")
 
     if not os.path.isfile(config['blacklisted_regions']):
-        raise HotspotFinderError(f"Blacklisted regions file does not exist: {config['mappability']['blacklisted_regions']}")
+        raise HotspotFinderError(f"Blacklisted regions file does not exist: {config['blacklisted_regions']}")
 
     # Population variants
     if not os.path.isfile(config['population_variants']):
-        raise HotspotFinderError(f"Population variants file does not exist: {config['polymorphisms']['population_variants']}")
+        raise HotspotFinderError(f"Population variants file does not exist: {config['population_variants']}")
+
+    # Repeats
+    if not os.path.isfile(config['repeats']):
+        raise HotspotFinderError(
+            f"Repeats file does not exist: {config['repeats']}")
+
+    # Ig and TR regions
+    if not os.path.isfile(config['ig_tr_regions']):
+        raise HotspotFinderError(
+            f"IG-TR regions file does not exist: {config['ig_tr_regions']}")
 
     # Genomic elements
     if not os.path.isfile(config['genomic_elements']) and \
             not config['genomic_elements'] in \
                 {'all', 'cds', '5utr', '3utr', 'proximal_promoters', 'distal_promoters', 'introns'}:
-        raise HotspotFinderError(f"Genomic regions file does not exist: {config['genomic_regions']['genomic_elements']}")
+        raise HotspotFinderError(f"Genomic regions file does not exist: {config['genomic_elements']}")
 
     # Output file names
     compression = '.gz' if config['output_format'].endswith('.gz') else ''
@@ -144,7 +154,9 @@ def main(
         f"* Annotate hotspots: {config['finder']['annotate']}",
         f"* Mapable regions file: {config['mappable_regions']}",
         f"* Blacklisted regions file: {config['blacklisted_regions']}",
-        f"* Population variants directory: {config['population_variants']}",
+        f"* Population variants file: {config['population_variants']}",
+        f"* Repeats file: {config['repeats']}",
+        f"* Ig-TR regions file: {config['ig_tr_regions']}",
         f"* Genomic elements file: {config['genomic_elements']}",
         f"* Output results directory: {output_directory}",
         f"* Output format: {config['output_format']}",

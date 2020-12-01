@@ -71,6 +71,14 @@ class HotspotFinder:
             self.variation_data_set = self.load_variation(config['population_variants'])
             logger.info('Population variants data loaded')
 
+            # Repeats data
+            self.repeats_tree = self.load_repeats(config['repeats'], 'N')
+            logger.info('Repeats data loaded')
+
+            # Immunoglobulin and T-cell receptor loci
+            self.ig_tr_tree = self.load_ig_tr(config['ig_tr_regions'])
+            logger.info('Ig-TR data loaded')
+
             # Genomic elements data
             self.genomic_elements = config['genomic_elements']
             self.regions_tree = None
@@ -135,6 +143,49 @@ class HotspotFinder:
         return set_of_interest
 
     @staticmethod
+    def load_repeats(file, chr_format='chrN'):
+        """
+        Load repeats regions into intervaltree
+        Args:
+            file (path): path to file containing repeats data
+            chr_format (str): chromosome format used in file. HotspotFinder works with format '1' instead of 'chr1'
+
+        Returns:
+            tree (dict): tree with regions, keys are chromosomes, data are regions
+        """
+
+        tree = defaultdict(IntervalTree)
+        trim = 3 if chr_format == 'chrN' else None
+        with gzip.open(file, 'rt') as fd:
+            # Skip header
+            next(fd)
+            for line in fd:
+                chrom, start, end, element = line.strip().split('\t')
+                tree[chrom[trim:]].addi(int(start), int(end) + 1, element)  # +1 interval
+        return tree
+
+    @staticmethod
+    def load_ig_tr(file):
+        """
+        Load Ig and T-cell receptor regions into intervaltree
+
+        Args:
+            file (path): path to file containing data
+
+        Returns:
+            tree (dict): tree with regions, keys are chromosomes, data are regions
+        """
+        tree = defaultdict(IntervalTree)
+        with gzip.open(file, 'rt') as fd:
+            # Skip header
+            next(fd)
+            for line in fd:
+                chrom, start, end, strand, _, transcript_id, _ = line.strip().split('\t')
+                tree[chrom].addi(int(start), int(end) + 1,
+                                 f'{transcript_id}::ig_tr')  # +1
+        return tree
+
+    @staticmethod
     def load_genomic_elements(files):
         """
         Load genomic element regions into intervaltree
@@ -148,6 +199,7 @@ class HotspotFinder:
         tree = defaultdict(IntervalTree)
         for genomic_element, file in files:
             with gzip.open(file, 'rt') as fd:
+                # Skip header
                 next(fd)
                 for line in fd:
                     chrom, start, end, strand, gene_id, transcript_id, symbol = line.strip().split('\t')
@@ -321,6 +373,10 @@ class HotspotFinder:
             'MAPPABILITY_BLACKLIST',
             'VARIATION_AF',
             'HOTSPOTFINDER_FILTERS',
+            'REPEATS',
+            'REPEATS_OVERLAP',
+            'IG_TR',
+            'IG_TR_OVERLAP',
             'N_COHORT_SAMPLES',
             'N_COHORT_MUTATIONS_TOTAL',
             'N_COHORT_MUTATIONS_SNV',
@@ -451,6 +507,22 @@ class HotspotFinder:
 
                             hotspotfinder_filters = 'PASS' if hotspotfinder_filters == 3 else 'FAIL'
 
+                            # Repeats
+                            repeats = set()
+                            for intersect in self.repeats_tree[chromosome][int(position)]:
+                                if intersect:
+                                    repeats.add(intersect.data)
+                            in_repeat = 'True' if repeats else 'False'
+                            repeats = ','.join(sorted(list(repeats))) if repeats else 'None'
+
+                            # Ig and TR
+                            ig_tr_loci = set()
+                            for intersect in self.ig_tr_tree[chromosome][int(position)]:
+                                if intersect:
+                                    ig_tr_loci.add(intersect.data)
+                            in_ig_tr_loci = 'True' if ig_tr_loci else 'False'
+                            ig_tr_loci = ','.join(sorted(list(ig_tr_loci))) if ig_tr_loci else 'None'
+
                             # Genomic elements
                             genomic_elements_full = []
                             symbol = set()
@@ -517,6 +589,10 @@ class HotspotFinder:
                                                          blacklist_data,
                                                          var_data,
                                                          hotspotfinder_filters,
+                                                         repeats,
+                                                         in_repeat,
+                                                         ig_tr_loci,
+                                                         in_ig_tr_loci,
                                                          n_cohort_samples,
                                                          n_cohort_mut_total,
                                                          n_cohort_mut_snv,
