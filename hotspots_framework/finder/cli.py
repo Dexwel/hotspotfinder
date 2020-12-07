@@ -76,6 +76,7 @@ def main(
         os.makedirs(output_directory, exist_ok=True)
 
     # Log
+    # TODO: add filemode='w'
     daiquiri.setup(level=LOG_LEVELS[log_level], outputs=(
         daiquiri.output.STDERR,
         daiquiri.output.File(
@@ -161,7 +162,6 @@ def main(
         f"* Cutoff hotspot mutations: {config['finder']['mutations_cutoff']}",
         f"* Cutoff hotspot mutated samples: {config['finder']['samples_cutoff']}",
         f"* Hotspots split alternates: {config['finder']['split_alternates']}",
-        f"* Remove unknown nucleotides: {config['finder']['remove_unknown_reference_nucleotides']}",
         f"* Remove nonannotated hotspots: {config['finder']['remove_nonannotated_hotspots']}",
         f"* Genome: {config['genome']}",
         f"* Group analysis by: {config['finder']['groupby']}",

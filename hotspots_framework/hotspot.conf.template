@@ -60,11 +60,6 @@ samples_cutoff = 3
 # By default, hotspots are defined as 3 mutations or more
 mutations_cutoff = 3
 
-# Reference nucleotide context can contain unknown nucleotides ('N')
-# By default, hotspots containing one 'N' in their tri- and/or penta-nucleotide
-# context are discarded
-remove_unknown_reference_nucleotides = True
-
 # By default, hotspots not overlapping genomic elements are removed from the output file
 # Set variable to False if you want to keep these hotspots in the output file
 remove_nonannotated_hotspots = True

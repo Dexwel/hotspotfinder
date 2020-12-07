@@ -13,8 +13,6 @@ genomic_elements = string()
 # TODO can we add a minimum number? 3
 samples_cutoff = integer(default=3)
 mutations_cutoff = integer(default=3)
-# TODO remove "remove"
-remove_unknown_reference_nucleotides = boolean(default=True)
 remove_nonannotated_hotspots = boolean(default=True)
 groupby = option('GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE', 'PLATFORM', default=None)
 split_alternates = boolean(default=False)

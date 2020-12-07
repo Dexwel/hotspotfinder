@@ -7,9 +7,7 @@ from collections import defaultdict
 import gzip
 import itertools
 import logging
-import os
 
-import bgdata
 import bgreference as bgref
 from bgparsers import readers
 from intervaltree import IntervalTree
@@ -103,7 +101,6 @@ class HotspotFinder:
         self.cores = config['cores']
         self.hotspot_mutated_samples = config['finder']['samples_cutoff']
         self.hotspot_mutations = config['finder']['mutations_cutoff']
-        self.remove_unknown_nucleotides = config['finder']['remove_unknown_reference_nucleotides']
         self.remove_nonannotated_hotspots = config['finder']['remove_nonannotated_hotspots']
         self.group_by = config['finder']['groupby']
         self.split_alternates = config['finder']['split_alternates']
@@ -250,6 +247,15 @@ class HotspotFinder:
         if self.mutation_counts.reference_mismatch > 0:
             logger.warning(f'A total of {self.mutation_counts.reference_mismatch} SNV/MNV/deletion REF nucleotides do not match the reference. '
                            f'These mutations are discarded from the analysis')
+        if self.mutation_counts.unknown_nucleotides_in_mutation > 0:
+            logger.warning(
+                f'A total of {self.mutation_counts.unknown_nucleotides_in_mutation} mutations contain unknown nucleotides. '
+                f'These mutations are discarded from the analysis')
+        if self.mutation_counts.unknown_nucleotides_in_context > 0:
+            logger.warning(
+                f'A total of {self.mutation_counts.unknown_nucleotides_in_context} mutations contain unknown nucleotides in their pentamer nucleotide context. '
+                f'These mutations are discarded from the analysis')
+
 
         # Just logging information
         for cohort in self.mutation_counts.get_cohorts():
@@ -471,9 +477,6 @@ class HotspotFinder:
                             ref = ','.join(list(ref))
                         else:
                             ref = pentamer_sequence[2]
-                        # Filter out hotspots with unknown nucleotides in 3-mer and 5-mer sequence context
-                        if self.remove_unknown_nucleotides and 'N' in trimer_sequence or 'N' in pentamer_sequence:
-                            break
 
                         logger.debug(list(map(str, [
                                                   hotspot_id_type,
