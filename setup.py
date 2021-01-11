@@ -12,15 +12,15 @@ with open(path.join(directory, 'README.md'), encoding='utf-8') as f:
 
 
 setup(
-    name='hotspots_framework',
+    name='hotspotfinder',
     version=__version__,
     description='BBGLab tool',
     long_description=long_description,
     long_description_content_type='text/markdown',
     packages=find_packages(),
     install_requires=required,
-    url="https://bitbucket.org/carnedo/hotspots_framework",
-    author="Claudia Arnedo",
+    url="https://bitbucket.org/bbglab/hotspotfinder",
+    author="BBGLab",
     author_email="bbglab@irbbarcelona.org",
     license="GNU Affero General Public License v3 or later (AGPLv3+)",
     entry_points={
