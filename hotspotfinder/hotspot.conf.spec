@@ -10,7 +10,6 @@ ig_tr_regions = string()
 genomic_elements = string()
 
 [finder]
-# TODO can we add a minimum number? 3
 samples_cutoff = integer(default=3)
 mutations_cutoff = integer(default=3)
 remove_nonannotated_hotspots = boolean(default=True)
