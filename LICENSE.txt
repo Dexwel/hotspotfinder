@@ -1,4 +1,4 @@
-Hotspot Framework is the property of the Institute for Research in Biomedicine (IRB Barcelona),
+HotspotFinder is the property of the Institute for Research in Biomedicine (IRB Barcelona),
 which hold the copyright thereto. Copyright (C) 2020 Institute for Research in Biomedicine (IRB Barcelona)
 
 This program is free software: you can redistribute it and/or modify
