@@ -1,2 +1,2 @@
-__logger_name__ = 'hotspotsframework'
+__logger_name__ = 'hotspotfinder'
 __version__ = "1.0.0"
