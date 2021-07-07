@@ -1,5 +1,4 @@
-from hotspots_framework.exceptions import HotspotFrameworkError
+from hotspotfinder.exceptions import HotspotFinderError
 
-# TODO use logger with finder in name
-class HotspotFinderError(HotspotFrameworkError):
+class HotspotFinderError(HotspotFinderError):
     pass
