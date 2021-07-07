@@ -1,6 +1,6 @@
 from os import path
 from setuptools import setup, find_packages
-from hotspots_framework import __version__
+from hotspotfinder import __version__
 
 
 directory = path.dirname(path.abspath(__file__))
