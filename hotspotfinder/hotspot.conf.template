@@ -71,7 +71,6 @@ remove_nonannotated_hotspots = True
 # groupby = 'GROUP'
 
 # Compute hotspots per nucleotide alternate independently or merged
-# In the current version this is only available for SNVs
 # By default, hotspots merge different alternates
 split_alternates = False
 
