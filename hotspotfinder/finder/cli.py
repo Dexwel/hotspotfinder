@@ -5,10 +5,10 @@ from collections import defaultdict
 import click
 import daiquiri
 
-from hotspots_framework import __logger_name__
-from hotspots_framework.finder import HotspotFinderError
-from hotspots_framework.finder.hotspotfinder import HotspotFinder
-from hotspots_framework import configuration
+from hotspotfinder import __logger_name__
+from hotspotfinder.finder import HotspotFinderError
+from hotspotfinder.finder.hotspotfinder import HotspotFinder
+from hotspotfinder import configuration
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -20,7 +20,7 @@ LOG_LEVELS = {
     'critical': logging.CRITICAL
 }
 
-# TODO remove genome and cores
+# TODO remove cores
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.option('-i', '--input-mutations', default=None, required=True, type=click.Path(exists=True),
               help='User input file containing somatic mutations in TSV format')
@@ -76,7 +76,6 @@ def main(
         os.makedirs(output_directory, exist_ok=True)
 
     # Log
-    # TODO: add filemode='w'
     daiquiri.setup(level=LOG_LEVELS[log_level], outputs=(
         daiquiri.output.STDERR,
         daiquiri.output.File(
@@ -112,33 +111,32 @@ def main(
     # Read configuration file
     config = configuration.load(config_file=configuration_file, override=config_override)
 
-    # TODO if not config['finder']['annotate'], skip next lines?
-    #config['finder']['annotate']
+    if config['finder']['annotate']:
 
-    # Mappability
-    if not os.path.isfile(config['mappable_regions']):
-        raise HotspotFinderError(f"Mappable regions file does not exist: {config['mappable_regions']}")
+        # Mappability
+        if not os.path.isfile(config['mappable_regions']):
+            raise HotspotFinderError(f"Mappable regions file does not exist: {config['mappable_regions']}")
 
-    if not os.path.isfile(config['blacklisted_regions']):
-        raise HotspotFinderError(f"Blacklisted regions file does not exist: {config['blacklisted_regions']}")
+        if not os.path.isfile(config['blacklisted_regions']):
+            raise HotspotFinderError(f"Blacklisted regions file does not exist: {config['blacklisted_regions']}")
 
-    # Population variants
-    if not os.path.isfile(config['population_variants']):
-        raise HotspotFinderError(f"Population variants file does not exist: {config['population_variants']}")
+        # Population variants
+        if not os.path.isfile(config['population_variants']):
+            raise HotspotFinderError(f"Population variants file does not exist: {config['population_variants']}")
 
-    # Repeats
-    if not os.path.isfile(config['repeats']):
-        raise HotspotFinderError(
-            f"Repeats file does not exist: {config['repeats']}")
+        # Repeats
+        if not os.path.isfile(config['repeats']):
+            raise HotspotFinderError(
+                f"Repeats file does not exist: {config['repeats']}")
 
-    # Ig and TR regions
-    if not os.path.isfile(config['ig_tr_regions']):
-        raise HotspotFinderError(
-            f"IG-TR regions file does not exist: {config['ig_tr_regions']}")
+        # Ig and TR regions
+        if not os.path.isfile(config['ig_tr_regions']):
+            raise HotspotFinderError(
+                f"IG-TR regions file does not exist: {config['ig_tr_regions']}")
 
-    # Genomic elements
-    if not os.path.isfile(config['genomic_elements']):
-        raise HotspotFinderError(f"Genomic regions file does not exist: {config['genomic_elements']}")
+        # Genomic elements
+        if not os.path.isfile(config['genomic_elements']):
+            raise HotspotFinderError(f"Genomic regions file does not exist: {config['genomic_elements']}")
 
     # Output file names
     compression = '.gz' if config['output_format'].endswith('.gz') else ''
