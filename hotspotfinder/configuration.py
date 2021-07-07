@@ -3,7 +3,7 @@ from os import path
 
 from bgconfig import BGConfig
 
-from hotspots_framework import __logger_name__
+from hotspotfinder import __logger_name__
 
 
 LOGGER = logging.getLogger(__logger_name__)
