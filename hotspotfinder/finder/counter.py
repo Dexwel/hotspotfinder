@@ -110,14 +110,15 @@ class MutationCounter:
         return self.mutations_by_sample[cohort].keys()
 
     def discard_mutation(self, cohort, sample, muttype, mut):
-        self.samples_and_alternates[cohort][muttype][mut].pop(sample)
-        self.mutations_by_sample[cohort][sample][muttype].discard(mut)
-        if len(self.mutations_by_sample[cohort][sample][muttype]) == 0:
-            self.mutations_by_sample[cohort][sample].pop(muttype)
-            if len(self.mutations_by_sample[cohort][sample]) == 0:
-                self.mutations_by_sample[cohort].pop(sample)
-                if len(self.mutations_by_sample[cohort]) == 0:
-                    self.mutations_by_sample[cohort].pop(cohort)
+        if sample in self.samples_and_alternates[cohort][muttype][mut].keys():
+            self.samples_and_alternates[cohort][muttype][mut].pop(sample)  # Error here
+            self.mutations_by_sample[cohort][sample][muttype].discard(mut)
+            if len(self.mutations_by_sample[cohort][sample][muttype]) == 0:
+                self.mutations_by_sample[cohort][sample].pop(muttype)
+                if len(self.mutations_by_sample[cohort][sample]) == 0:
+                    self.mutations_by_sample[cohort].pop(sample)
+                    if len(self.mutations_by_sample[cohort]) == 0:
+                        self.mutations_by_sample[cohort].pop(cohort)
 
     def get_samples_per_mutation(self, mut, muttype, cohort):
         return set(self.samples_and_alternates[cohort][muttype][mut].keys())
