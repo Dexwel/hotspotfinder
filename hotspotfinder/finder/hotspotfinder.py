@@ -12,9 +12,9 @@ import bgreference as bgref
 from bgparsers import readers
 from intervaltree import IntervalTree
 
-from hotspots_framework import __logger_name__
-from hotspots_framework.finder.counter import MutationCounter
-from hotspots_framework.utils import file_open
+from hotspotfinder import __logger_name__
+from hotspotfinder.finder.counter import MutationCounter
+from hotspotfinder.utils import file_open
 
 logger = logging.getLogger(__logger_name__)
 
@@ -127,7 +127,7 @@ class HotspotFinder:
         tree = defaultdict(IntervalTree)
         trim = 3 if chr_format == 'chrN' else None
         with gzip.open(file, 'rt') as fd:
-            for line in fd:
+            for line in fd:    # no header
                 chrom, start, end = line.strip().split('\t')
                 tree[chrom[trim:]].addi(int(start), int(end) + 1)  # +1 interval
         return tree
@@ -513,6 +513,14 @@ class HotspotFinder:
                                                      alternates_fractions,
                                                      trimer_sequence,
                                                      pentamer_sequence,
+                                                     n_cohort_samples,
+                                                     n_cohort_mut_total,
+                                                     n_cohort_mut_snv,
+                                                     n_cohort_mut_mnv,
+                                                     n_cohort_mut_ins,
+                                                     n_cohort_mut_del,
+                                                     mut_samples,
+                                                     mut_samples_to_alt,
                                                      warning_flag
                         ]))
 
