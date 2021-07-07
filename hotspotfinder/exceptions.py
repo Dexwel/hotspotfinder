@@ -1,8 +1,8 @@
 """
-Contains HotspotFrameworkError class
+Contains HotspotFinderError class
 """
 
 
-class HotspotFrameworkError(Exception):
-    """Base class for exceptions in HotspotFramework"""
+class HotspotFinderError(Exception):
+    """Base class for exceptions in HotspotFinder"""
     pass
