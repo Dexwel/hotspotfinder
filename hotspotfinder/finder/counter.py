@@ -21,7 +21,7 @@ class MutationCounter:
         self.unknown_nucleotides_in_context = 0
 
     def add_mutation(self, chromosome, position, ref, alt, alt_type, sample, cohort):
-        """Filter unique mutation"""
+        """Parse unique mutation"""
 
         chr_position = f'{chromosome}_{position}'
 
@@ -61,7 +61,6 @@ class MutationCounter:
 
         # Read indels
         elif alt_type == 'indel':
-
             # Simple insertions (e.g, G>GA, G>GAAA)
             if ref == '-':
                 muttype = 'ins'
@@ -111,7 +110,7 @@ class MutationCounter:
 
     def discard_mutation(self, cohort, sample, muttype, mut):
         if sample in self.samples_and_alternates[cohort][muttype][mut].keys():
-            self.samples_and_alternates[cohort][muttype][mut].pop(sample)  # Error here
+            self.samples_and_alternates[cohort][muttype][mut].pop(sample)
             self.mutations_by_sample[cohort][sample][muttype].discard(mut)
             if len(self.mutations_by_sample[cohort][sample][muttype]) == 0:
                 self.mutations_by_sample[cohort][sample].pop(muttype)
