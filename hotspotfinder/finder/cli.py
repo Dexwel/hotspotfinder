@@ -166,7 +166,6 @@ def main(
         f"* Cores: {config['cores']}",
     ]))
 
-    logger.info('Loading annotations files...')
     # Run HotspotFinder
     experiment = HotspotFinder(
         input_mutations,
