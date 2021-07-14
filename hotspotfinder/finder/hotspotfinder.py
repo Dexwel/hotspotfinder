@@ -74,6 +74,8 @@ class HotspotFinder:
 
         if config['finder']['annotate']:
 
+            logger.info('Loading genomic annotations...')
+
             # Mappability data
             self.mappable_regions_tree = self.load_mappability(config['mappable_regions'])
             self.blacklisted_regions_tree = self.load_mappability(config['blacklisted_regions'])
@@ -209,8 +211,8 @@ class HotspotFinder:
         with gzip.open(file, 'rt') as fd:
             for line in fd:
                 chrom, start, end, strand, gene_id, transcript_id, symbol, genomic_element = line.strip().split('\t')
-                tree[chrom].addi(int(start), int(end) + 1,
-                                f'{symbol}::{gene_id}::{transcript_id}::{genomic_element}')  # +1
+                tree[chrom].addi(
+                    int(start), int(end) + 1, f'{symbol}::{gene_id}::{transcript_id}::{genomic_element}')  # +1
         return tree
 
     def parse_mutations(self):
@@ -245,17 +247,19 @@ class HotspotFinder:
                 self.mutation_counts.add_mutation(chromosome, position, ref, alt, alt_type, sample, cohort)
 
         if self.mutation_counts.reference_mismatch > 0:
-            logger.warning(f'A total of {self.mutation_counts.reference_mismatch} SNV/MNV/deletion REF nucleotides do not match the reference. '
+            logger.warning(f'A total of {self.mutation_counts.reference_mismatch} SNV/MNV/deletion REF nucleotides '
+                           f'do not match the reference. '
                            f'These mutations are discarded from the analysis')
         if self.mutation_counts.unknown_nucleotides_in_mutation > 0:
             logger.warning(
-                f'A total of {self.mutation_counts.unknown_nucleotides_in_mutation} mutations contain unknown nucleotides. '
+                f'A total of {self.mutation_counts.unknown_nucleotides_in_mutation} mutations '
+                f'contain unknown nucleotides. '
                 f'These mutations are discarded from the analysis')
         if self.mutation_counts.unknown_nucleotides_in_context > 0:
             logger.warning(
-                f'A total of {self.mutation_counts.unknown_nucleotides_in_context} mutations contain unknown nucleotides in their pentamer nucleotide context. '
+                f'A total of {self.mutation_counts.unknown_nucleotides_in_context} mutations '
+                f'contain unknown nucleotides in their pentamer nucleotide context. '
                 f'These mutations are discarded from the analysis')
-
 
         # Just logging information
         for cohort in self.mutation_counts.get_cohorts():
@@ -337,9 +341,11 @@ class HotspotFinder:
 
     def find_hotspots(self):
         """
-        Identifies hotspots
+        Function to identify hotspots: genomic positions with number of mutations >= hotspot_mutations
+        Further filters are applied in write_hotspots() function
         """
 
+        # Identify hotspots as genomic positions with number of mutations >= hotspot_mutations
         for cohort, data in self.cohort_to_mutation_alts.items():
             for muttype, mutated_positions in data.items():
                 if self.split_alternates:
@@ -351,6 +357,16 @@ class HotspotFinder:
                 else:
                     self.hotspots[cohort][muttype] = {k: v for k, v in mutated_positions.items() if
                                                       len(v) >= self.hotspot_mutations}
+
+        hotspots_unique = set()
+        for cohort, data in self.hotspots.items():
+            for muttype, mutated_positions in data.items():
+                for i in mutated_positions:
+                    hotspots_unique.add(i)
+                    if i == '22_22890207_snv':
+                        print('Hotspot here 22_22890207_snv')
+
+        print(len(hotspots_unique))
 
     def write_hotspots(self):
         """
@@ -419,23 +435,30 @@ class HotspotFinder:
                                      n_cohort_mut_ins + n_cohort_mut_del
                 # Read hotspots
                 for muttype, hotspots in data.items():
-                    for hotspot_id_type, list_of_alternates in sorted(hotspots.items(), key=lambda item: len(item[1]), reverse=True):
+
+                    for hotspot_id_type, list_of_alternates in sorted(
+                            hotspots.items(), key=lambda item: len(item[1]), reverse=True):
+
+                        data_to_write = []
 
                         # Chromosome and position
-                        chromosome, position, _ = hotspot_id_type.split('>')[0].split('_')    # remove SNV alternate
+                        # Remove alternate if self.split_alternates option is True
+                        # Works also in default option self.split_alternates False
+                        chromosome, position, _ = hotspot_id_type.split('>')[0].split('_')
                         chr_pos = f'{chromosome}_{position}'
 
                         # Number of mutations
                         n_mutations = len(list_of_alternates)
 
-                        # Get number of mutated samples and alternates
+                        # Mutated samples and alternates
+                        # Get mutated samples and their alternates from counter module
                         mut_samples = self.mutation_counts.get_samples_per_mutation(chr_pos, muttype, cohort)
                         mut_samples_to_alt = self.mutation_counts.get_alternates_per_mutation(chr_pos, muttype, cohort)
 
-                        # If split alternates, check which samples have the alternate of the hotspot and update variables
+                        # If hotspots are alternate specific (split alternates is True)
+                        # check which samples have the alternate of the hotspot and update variables
                         if self.split_alternates:
                             alternate = hotspot_id_type.split('>')[1]
-                            print(hotspot_id_type, alternate)
                             mut_samples = set()
                             for sample, sample_alternates in mut_samples_to_alt.items():
                                 for unique_alternate in sample_alternates:
@@ -443,15 +466,16 @@ class HotspotFinder:
                                         mut_samples.add(sample)
                             mut_samples_to_alt = {k: v for k, v in mut_samples_to_alt.items() if k in mut_samples}
                             list_of_alternates = list(itertools.chain.from_iterable(list(mut_samples_to_alt.values())))
-
                         # Number of mutated samples
                         n_mut_samples = len(mut_samples)
 
-                        # Filter out of number of mutated samples
+                        # Skip hotspots below threshold of number of mutated samples
                         if n_mut_samples < self.hotspot_mutated_samples:
-                            break
+                            print(hotspot_id_type, list_of_alternates, n_mut_samples, mut_samples)
+                            continue
 
                         # Alternates
+                        # Reformat alternates and add other information to write in output file
                         if muttype != 'del':
                             alternates = ','.join(sorted(list(set(list_of_alternates))))
                         else:
@@ -465,7 +489,8 @@ class HotspotFinder:
                         mut_samples_to_alt = ';'.join([f'{k}::{",".join(v)}' for k, v in mut_samples_to_alt.items()])
                         mut_samples = ';'.join(list(mut_samples))
 
-                        # Sequence info
+                        # Sequence context
+                        # Retrieve reference genome sequence contexts
                         pentamer_sequence = bgref.refseq(self.genome, chromosome, int(position) - 2, 5)
                         trimer_sequence = pentamer_sequence[1:4]
                         if muttype == 'ins':
@@ -496,7 +521,9 @@ class HotspotFinder:
                         # Warning flag: at least one sample in the dataset contains a warning in this position
                         warning_flag = 'True' if chr_pos in self.warning_chr_position else 'False'
 
-                        data_to_write = list(map(str,
+                        # Append hotspot data to list
+                        # When the method runs without annotations, this is the output per hotspot
+                        data_to_write += list(map(str,
                                                  [
                                                      chromosome,
                                                      position,
@@ -524,9 +551,13 @@ class HotspotFinder:
                                                      warning_flag
                         ]))
 
+                        # Genomic annotations
+                        # If the method runs with annotations, compute them and add them to results
                         if self.annotate_hotspots:
 
-                            # HotspotFinder filters
+                            # HotspotFinder flags
+                            # The hotspot is checked against 3 main flags:
+                            # mappability, mappability blacklisted regions and variation (SNP overlap)
                             hotspotfinder_filters = 2
 
                             # Mappability
@@ -551,6 +582,7 @@ class HotspotFinder:
 
                             hotspotfinder_filters = 'PASS' if hotspotfinder_filters == 3 else 'FAIL'
 
+                            # Additional annotations
                             # Repeats
                             repeats = set()
                             for intersect in self.repeats_tree[chromosome][int(position)]:
@@ -598,9 +630,10 @@ class HotspotFinder:
                                 genomic_elements_type = 'None'
                                 genomic_elements_type_priority = 'None'
 
-                            # Filter out hotspots that do not overlap any known region if specified
+                            # If specified (remove_nonannotated_hotspots is True)
+                            # filter out hotspots that do not overlap any known region
                             if self.remove_nonannotated_hotspots is True and genomic_elements_full == 'None':
-                                break
+                                continue
 
                             # Coding or noncoding flag
                             coding_noncoding = 'CODING' if 'cds' in genomic_elements_type else 'NONCODING'
