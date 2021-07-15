@@ -1,0 +1,171 @@
+2021-07-15 15:20:40,695 [19272] INFO     hotspotfinder: HotspotFinder
+2021-07-15 15:20:40,696 [19272] INFO     hotspotfinder: Initializing HotspotFinder...
+2021-07-15 15:20:40,730 [19272] DEBUG    urllib3.connectionpool: Starting new HTTP connection (1): bbglab.irbbarcelona.org:80
+2021-07-15 15:20:40,796 [19272] DEBUG    urllib3.connectionpool: http://bbglab.irbbarcelona.org:80 "GET /bgdata/genomemappability/hg38/gem_100bp.master?5c363ab8ee65cf0399b18d5155d6d2 HTTP/1.1" 200 None
+2021-07-15 15:20:40,864 [19272] DEBUG    urllib3.connectionpool: Starting new HTTP connection (1): bbglab.irbbarcelona.org:80
+2021-07-15 15:20:40,929 [19272] DEBUG    urllib3.connectionpool: http://bbglab.irbbarcelona.org:80 "GET /bgdata/genomemappability/hg38/blacklist.master?067101162cd2e8974a550404357f49 HTTP/1.1" 200 None
+2021-07-15 15:20:40,993 [19272] DEBUG    urllib3.connectionpool: Starting new HTTP connection (1): bbglab.irbbarcelona.org:80
+2021-07-15 15:20:41,061 [19272] DEBUG    urllib3.connectionpool: http://bbglab.irbbarcelona.org:80 "GET /bgdata/populationvariants/hg38/gnomad_v3_AF1.master?a78f3a128983bd3a85ced0b09037bb HTTP/1.1" 200 None
+2021-07-15 15:20:41,092 [19272] INFO     hotspotfinder: Analysis parameters loaded
+2021-07-15 15:20:41,125 [19272] DEBUG    urllib3.connectionpool: Starting new HTTP connection (1): bbglab.irbbarcelona.org:80
+2021-07-15 15:20:41,193 [19272] DEBUG    urllib3.connectionpool: http://bbglab.irbbarcelona.org:80 "GET /bgdata/genomemappability/hg38/gem_100bp.master?bdd97bf72d03060f2d70109912df29 HTTP/1.1" 200 None
+2021-07-15 15:20:41,259 [19272] DEBUG    urllib3.connectionpool: Starting new HTTP connection (1): bbglab.irbbarcelona.org:80
+2021-07-15 15:20:41,321 [19272] DEBUG    urllib3.connectionpool: http://bbglab.irbbarcelona.org:80 "GET /bgdata/genomemappability/hg38/blacklist.master?550868edefa8ccd2a5906cc27ffc39 HTTP/1.1" 200 None
+2021-07-15 15:20:41,386 [19272] DEBUG    urllib3.connectionpool: Starting new HTTP connection (1): bbglab.irbbarcelona.org:80
+2021-07-15 15:20:41,452 [19272] DEBUG    urllib3.connectionpool: http://bbglab.irbbarcelona.org:80 "GET /bgdata/populationvariants/hg38/gnomad_v3_AF1.master?9a0fdf8742286711eaf1cd7f0aca31 HTTP/1.1" 200 None
+2021-07-15 15:20:41,486 [19272] INFO     hotspotfinder: 
+* Input mutations file: /home/carnedo/projects/hotspotfinder/hotspotfinder/test/test_2_groupby.txt
+* Annotate hotspots: False
+* Mapable regions file: /workspace/datasets/bgdata/local/genomemappability/hg38/gem_100bp-20201016/hg38_100bp.coverage.regions.gz
+* Blacklisted regions file: /workspace/datasets/bgdata/local/genomemappability/hg38/blacklist-20201016/ENCFF356LFX.bed.gz
+* Population variants file: /workspace/datasets/bgdata/local/populationvariants/hg38/gnomad_v3_AF1-20201016/gnomad.genomes.r3.0.sites.allchr.af_0.01.tsv.gz
+* Repeats file: /workspace/projects/noncoding_regions/data/repeatmasker/hg38_repeatmasker.reformat.gz
+* Ig-TR regions file: /workspace/projects/genomic_regions/hg38/release_2/IG_TR_loci/hg38_IG_TR_loci.tstart_to_tend.gz
+* Genomic elements file: /workspace/projects/noncoding_regions/data/regions/genomic_elements/new/hg38_release2_annotations.txt.gz
+* Output results directory: /home/carnedo/projects/hotspotfinder/hotspotfinder/test
+* Output format: tsv
+* Cutoff hotspot mutations: 3
+* Cutoff hotspot mutated samples: 3
+* Hotspots split alternates: False
+* Remove nonannotated hotspots: False
+* Genome: hg38
+* Group analysis by: GROUP
+* Cores: 1
+2021-07-15 15:20:41,486 [19272] INFO     hotspotfinder: Parsing mutations...
+2021-07-15 15:20:41,519 [19272] DEBUG    urllib3.connectionpool: Starting new HTTP connection (1): bbglab.irbbarcelona.org:80
+2021-07-15 15:20:41,587 [19272] DEBUG    urllib3.connectionpool: http://bbglab.irbbarcelona.org:80 "GET /bgdata/datasets/genomereference/hg38.master?29ee415cd21b930ff8596982825660 HTTP/1.1" 200 None
+2021-07-15 15:20:41,588 [19272] WARNING  hotspotfinder: A total of 2 SNV/MNV/deletion REF nucleotides do not match the reference. These mutations are discarded from the analysis
+2021-07-15 15:20:41,588 [19272] INFO     hotspotfinder: Input snv mutations in cohort2 = 2
+2021-07-15 15:20:41,588 [19272] INFO     hotspotfinder: Input mnv mutations in cohort2 = 0
+2021-07-15 15:20:41,588 [19272] INFO     hotspotfinder: Input ins mutations in cohort2 = 0
+2021-07-15 15:20:41,589 [19272] INFO     hotspotfinder: Input del mutations in cohort2 = 1
+2021-07-15 15:20:41,589 [19272] INFO     hotspotfinder: Input total mutations in cohort2 = 3
+2021-07-15 15:20:41,589 [19272] INFO     hotspotfinder: Input snv mutations in cohort1 = 1
+2021-07-15 15:20:41,589 [19272] INFO     hotspotfinder: Input mnv mutations in cohort1 = 3
+2021-07-15 15:20:41,589 [19272] INFO     hotspotfinder: Input ins mutations in cohort1 = 3
+2021-07-15 15:20:41,589 [19272] INFO     hotspotfinder: Input del mutations in cohort1 = 3
+2021-07-15 15:20:41,589 [19272] INFO     hotspotfinder: Input total mutations in cohort1 = 10
+2021-07-15 15:20:41,589 [19272] INFO     hotspotfinder: Mutations parsed
+2021-07-15 15:20:41,589 [19272] INFO     hotspotfinder: Identifying hotspots...
+2021-07-15 15:20:41,590 [19272] INFO     hotspotfinder: Hotspots identified
+2021-07-15 15:20:41,590 [19272] INFO     hotspotfinder: Writing output file...
+2021-07-15 15:20:41,590 [19272] DEBUG    hotspotfinder: ['17_7571726_mnv', 'mnv', 'cohort1', '3', '3', 'GT,GTG', 'CA,CC,CGA', 'CC=1,CA=1,CGA=1', 'CC=0.3333333333333333,CA=0.3333333333333333,CGA=0.3333333333333333', 'sample4::CC;sample5::CA;sample6::CGA']
+2021-07-15 15:20:41,590 [19272] DEBUG    hotspotfinder: ['17_7571726_ins', 'ins', 'cohort1', '3', '3', '-', 'A,AA', 'A=2,AA=1', 'A=0.6666666666666666,AA=0.3333333333333333', 'sample7::A;sample8::A;sample9::AA']
+2021-07-15 15:20:41,590 [19272] DEBUG    hotspotfinder: ['17_7571726_del', 'del', 'cohort1', '3', '3', 'G,GTGGC', '-', 'G=2,GTGGC=1', 'G=0.6666666666666666,GTGGC=0.3333333333333333', 'sample10::G;sample11::G;sample12::GTGGC']
+2021-07-15 15:20:41,590 [19272] INFO     hotspotfinder: Total hotspots identified: 3
+2021-07-15 15:20:41,591 [19272] INFO     hotspotfinder: Hotspots saved to file
+2021-07-15 15:20:41,591 [19272] INFO     hotspotfinder: HotspotFinder analysis finished!
+2021-07-15 15:20:59,143 [19318] INFO     hotspotfinder: HotspotFinder
+2021-07-15 15:20:59,143 [19318] INFO     hotspotfinder: Initializing HotspotFinder...
+2021-07-15 15:20:59,249 [19318] DEBUG    urllib3.connectionpool: Starting new HTTP connection (1): bbglab.irbbarcelona.org:80
+2021-07-15 15:20:59,312 [19318] DEBUG    urllib3.connectionpool: http://bbglab.irbbarcelona.org:80 "GET /bgdata/genomemappability/hg38/gem_100bp.master?fadc3a0d627e7cfbbf0174a6e6c051 HTTP/1.1" 200 None
+2021-07-15 15:20:59,448 [19318] DEBUG    urllib3.connectionpool: Starting new HTTP connection (1): bbglab.irbbarcelona.org:80
+2021-07-15 15:20:59,511 [19318] DEBUG    urllib3.connectionpool: http://bbglab.irbbarcelona.org:80 "GET /bgdata/genomemappability/hg38/blacklist.master?f8111030dd5a6dfdacea476c594d5a HTTP/1.1" 200 None
+2021-07-15 15:20:59,708 [19318] DEBUG    urllib3.connectionpool: Starting new HTTP connection (1): bbglab.irbbarcelona.org:80
+2021-07-15 15:20:59,769 [19318] DEBUG    urllib3.connectionpool: http://bbglab.irbbarcelona.org:80 "GET /bgdata/populationvariants/hg38/gnomad_v3_AF1.master?4803f5579297e2fa8c69c5e7d8d202 HTTP/1.1" 200 None
+2021-07-15 15:20:59,858 [19318] INFO     hotspotfinder: Analysis parameters loaded
+2021-07-15 15:20:59,893 [19318] DEBUG    urllib3.connectionpool: Starting new HTTP connection (1): bbglab.irbbarcelona.org:80
+2021-07-15 15:20:59,959 [19318] DEBUG    urllib3.connectionpool: http://bbglab.irbbarcelona.org:80 "GET /bgdata/genomemappability/hg38/gem_100bp.master?708d68d6aa984762e1b05581ee25ce HTTP/1.1" 200 None
+2021-07-15 15:21:00,031 [19318] DEBUG    urllib3.connectionpool: Starting new HTTP connection (1): bbglab.irbbarcelona.org:80
+2021-07-15 15:21:00,097 [19318] DEBUG    urllib3.connectionpool: http://bbglab.irbbarcelona.org:80 "GET /bgdata/genomemappability/hg38/blacklist.master?245188dacdf4da7ceea0c5115a4ade HTTP/1.1" 200 None
+2021-07-15 15:21:00,170 [19318] DEBUG    urllib3.connectionpool: Starting new HTTP connection (1): bbglab.irbbarcelona.org:80
+2021-07-15 15:21:00,235 [19318] DEBUG    urllib3.connectionpool: http://bbglab.irbbarcelona.org:80 "GET /bgdata/populationvariants/hg38/gnomad_v3_AF1.master?a75041614252eaa30e35d9fe65ebba HTTP/1.1" 200 None
+2021-07-15 15:21:00,268 [19318] INFO     hotspotfinder: 
+* Input mutations file: /home/carnedo/projects/hotspotfinder/hotspotfinder/test/test_2_groupby.txt
+* Annotate hotspots: False
+* Mapable regions file: /workspace/datasets/bgdata/local/genomemappability/hg38/gem_100bp-20201016/hg38_100bp.coverage.regions.gz
+* Blacklisted regions file: /workspace/datasets/bgdata/local/genomemappability/hg38/blacklist-20201016/ENCFF356LFX.bed.gz
+* Population variants file: /workspace/datasets/bgdata/local/populationvariants/hg38/gnomad_v3_AF1-20201016/gnomad.genomes.r3.0.sites.allchr.af_0.01.tsv.gz
+* Repeats file: /workspace/projects/noncoding_regions/data/repeatmasker/hg38_repeatmasker.reformat.gz
+* Ig-TR regions file: /workspace/projects/genomic_regions/hg38/release_2/IG_TR_loci/hg38_IG_TR_loci.tstart_to_tend.gz
+* Genomic elements file: /workspace/projects/noncoding_regions/data/regions/genomic_elements/new/hg38_release2_annotations.txt.gz
+* Output results directory: /home/carnedo/projects/hotspotfinder/hotspotfinder/test
+* Output format: tsv
+* Cutoff hotspot mutations: 3
+* Cutoff hotspot mutated samples: 3
+* Hotspots split alternates: False
+* Remove nonannotated hotspots: False
+* Genome: hg38
+* Group analysis by: GROUP
+* Cores: 1
+2021-07-15 15:21:00,269 [19318] INFO     hotspotfinder: Parsing mutations...
+2021-07-15 15:21:00,363 [19318] DEBUG    urllib3.connectionpool: Starting new HTTP connection (1): bbglab.irbbarcelona.org:80
+2021-07-15 15:21:00,428 [19318] DEBUG    urllib3.connectionpool: http://bbglab.irbbarcelona.org:80 "GET /bgdata/datasets/genomereference/hg38.master?e394d7dca94c864068073cd38a3c5f HTTP/1.1" 200 None
+2021-07-15 15:21:00,432 [19318] WARNING  hotspotfinder: A total of 2 SNV/MNV/deletion REF nucleotides do not match the reference. These mutations are discarded from the analysis
+2021-07-15 15:21:00,433 [19318] INFO     hotspotfinder: Input snv mutations in cohort2 = 2
+2021-07-15 15:21:00,433 [19318] INFO     hotspotfinder: Input mnv mutations in cohort2 = 0
+2021-07-15 15:21:00,434 [19318] INFO     hotspotfinder: Input ins mutations in cohort2 = 0
+2021-07-15 15:21:00,434 [19318] INFO     hotspotfinder: Input del mutations in cohort2 = 1
+2021-07-15 15:21:00,434 [19318] INFO     hotspotfinder: Input total mutations in cohort2 = 3
+2021-07-15 15:21:00,435 [19318] INFO     hotspotfinder: Input snv mutations in cohort1 = 1
+2021-07-15 15:21:00,435 [19318] INFO     hotspotfinder: Input mnv mutations in cohort1 = 3
+2021-07-15 15:21:00,435 [19318] INFO     hotspotfinder: Input ins mutations in cohort1 = 3
+2021-07-15 15:21:00,436 [19318] INFO     hotspotfinder: Input del mutations in cohort1 = 3
+2021-07-15 15:21:00,436 [19318] INFO     hotspotfinder: Input total mutations in cohort1 = 10
+2021-07-15 15:21:00,437 [19318] INFO     hotspotfinder: Mutations parsed
+2021-07-15 15:21:00,437 [19318] INFO     hotspotfinder: Identifying hotspots...
+2021-07-15 15:21:00,438 [19318] INFO     hotspotfinder: Hotspots identified
+2021-07-15 15:21:00,438 [19318] INFO     hotspotfinder: Writing output file...
+2021-07-15 15:21:00,439 [19318] DEBUG    hotspotfinder: ['17_7571726_mnv', 'mnv', 'cohort1', '3', '3', 'GT,GTG', 'CA,CC,CGA', 'CC=1,CA=1,CGA=1', 'CC=0.3333333333333333,CA=0.3333333333333333,CGA=0.3333333333333333', 'sample4::CC;sample5::CA;sample6::CGA']
+2021-07-15 15:21:00,440 [19318] DEBUG    hotspotfinder: ['17_7571726_ins', 'ins', 'cohort1', '3', '3', '-', 'A,AA', 'AA=1,A=2', 'AA=0.3333333333333333,A=0.6666666666666666', 'sample7::A;sample8::A;sample9::AA']
+2021-07-15 15:21:00,440 [19318] DEBUG    hotspotfinder: ['17_7571726_del', 'del', 'cohort1', '3', '3', 'GTGGC,G', '-', 'GTGGC=1,G=2', 'GTGGC=0.3333333333333333,G=0.6666666666666666', 'sample10::G;sample11::G;sample12::GTGGC']
+2021-07-15 15:21:00,441 [19318] INFO     hotspotfinder: Total hotspots identified: 3
+2021-07-15 15:21:00,441 [19318] INFO     hotspotfinder: Hotspots saved to file
+2021-07-15 15:21:00,442 [19318] INFO     hotspotfinder: HotspotFinder analysis finished!
+2021-07-15 15:21:20,208 [19342] INFO     hotspotfinder: HotspotFinder
+2021-07-15 15:21:20,208 [19342] INFO     hotspotfinder: Initializing HotspotFinder...
+2021-07-15 15:21:20,325 [19342] DEBUG    urllib3.connectionpool: Starting new HTTP connection (1): bbglab.irbbarcelona.org:80
+2021-07-15 15:21:20,386 [19342] DEBUG    urllib3.connectionpool: http://bbglab.irbbarcelona.org:80 "GET /bgdata/genomemappability/hg38/gem_100bp.master?e9dcf7c5d89eabccb199cf1db35f37 HTTP/1.1" 200 None
+2021-07-15 15:21:20,546 [19342] DEBUG    urllib3.connectionpool: Starting new HTTP connection (1): bbglab.irbbarcelona.org:80
+2021-07-15 15:21:20,607 [19342] DEBUG    urllib3.connectionpool: http://bbglab.irbbarcelona.org:80 "GET /bgdata/genomemappability/hg38/blacklist.master?e9571863b0af1a1f2e1f2e9a9a5a00 HTTP/1.1" 200 None
+2021-07-15 15:21:20,797 [19342] DEBUG    urllib3.connectionpool: Starting new HTTP connection (1): bbglab.irbbarcelona.org:80
+2021-07-15 15:21:20,857 [19342] DEBUG    urllib3.connectionpool: http://bbglab.irbbarcelona.org:80 "GET /bgdata/populationvariants/hg38/gnomad_v3_AF1.master?e86128798ad3ebf6ac6a8be63faff2 HTTP/1.1" 200 None
+2021-07-15 15:21:20,954 [19342] INFO     hotspotfinder: Analysis parameters loaded
+2021-07-15 15:21:20,991 [19342] DEBUG    urllib3.connectionpool: Starting new HTTP connection (1): bbglab.irbbarcelona.org:80
+2021-07-15 15:21:21,056 [19342] DEBUG    urllib3.connectionpool: http://bbglab.irbbarcelona.org:80 "GET /bgdata/genomemappability/hg38/gem_100bp.master?bb4187a63bc1686e9a77d14f7a585c HTTP/1.1" 200 None
+2021-07-15 15:21:21,124 [19342] DEBUG    urllib3.connectionpool: Starting new HTTP connection (1): bbglab.irbbarcelona.org:80
+2021-07-15 15:21:21,192 [19342] DEBUG    urllib3.connectionpool: http://bbglab.irbbarcelona.org:80 "GET /bgdata/genomemappability/hg38/blacklist.master?b5adbdd738991d7f8e70afa28eb53a HTTP/1.1" 200 None
+2021-07-15 15:21:21,268 [19342] DEBUG    urllib3.connectionpool: Starting new HTTP connection (1): bbglab.irbbarcelona.org:80
+2021-07-15 15:21:21,332 [19342] DEBUG    urllib3.connectionpool: http://bbglab.irbbarcelona.org:80 "GET /bgdata/populationvariants/hg38/gnomad_v3_AF1.master?563b570bcffc7d438011f836c88b58 HTTP/1.1" 200 None
+2021-07-15 15:21:21,364 [19342] INFO     hotspotfinder: 
+* Input mutations file: /home/carnedo/projects/hotspotfinder/hotspotfinder/test/test_2_groupby.txt
+* Annotate hotspots: False
+* Mapable regions file: /workspace/datasets/bgdata/local/genomemappability/hg38/gem_100bp-20201016/hg38_100bp.coverage.regions.gz
+* Blacklisted regions file: /workspace/datasets/bgdata/local/genomemappability/hg38/blacklist-20201016/ENCFF356LFX.bed.gz
+* Population variants file: /workspace/datasets/bgdata/local/populationvariants/hg38/gnomad_v3_AF1-20201016/gnomad.genomes.r3.0.sites.allchr.af_0.01.tsv.gz
+* Repeats file: /workspace/projects/noncoding_regions/data/repeatmasker/hg38_repeatmasker.reformat.gz
+* Ig-TR regions file: /workspace/projects/genomic_regions/hg38/release_2/IG_TR_loci/hg38_IG_TR_loci.tstart_to_tend.gz
+* Genomic elements file: /workspace/projects/noncoding_regions/data/regions/genomic_elements/new/hg38_release2_annotations.txt.gz
+* Output results directory: /home/carnedo/projects/hotspotfinder/hotspotfinder/test
+* Output format: tsv
+* Cutoff hotspot mutations: 3
+* Cutoff hotspot mutated samples: 3
+* Hotspots split alternates: False
+* Remove nonannotated hotspots: False
+* Genome: hg38
+* Group analysis by: GROUP
+* Cores: 1
+2021-07-15 15:21:21,365 [19342] INFO     hotspotfinder: Parsing mutations...
+2021-07-15 15:21:21,485 [19342] DEBUG    urllib3.connectionpool: Starting new HTTP connection (1): bbglab.irbbarcelona.org:80
+2021-07-15 15:21:21,545 [19342] DEBUG    urllib3.connectionpool: http://bbglab.irbbarcelona.org:80 "GET /bgdata/datasets/genomereference/hg38.master?d96832e4a57efb9e4babf55b19c210 HTTP/1.1" 200 None
+2021-07-15 15:21:21,547 [19342] INFO     hotspotfinder: Input snv mutations in cohort2 = 2
+2021-07-15 15:21:21,547 [19342] INFO     hotspotfinder: Input mnv mutations in cohort2 = 0
+2021-07-15 15:21:21,547 [19342] INFO     hotspotfinder: Input ins mutations in cohort2 = 0
+2021-07-15 15:21:21,547 [19342] INFO     hotspotfinder: Input del mutations in cohort2 = 3
+2021-07-15 15:21:21,547 [19342] INFO     hotspotfinder: Input total mutations in cohort2 = 5
+2021-07-15 15:21:21,547 [19342] INFO     hotspotfinder: Input snv mutations in cohort1 = 1
+2021-07-15 15:21:21,548 [19342] INFO     hotspotfinder: Input mnv mutations in cohort1 = 3
+2021-07-15 15:21:21,548 [19342] INFO     hotspotfinder: Input ins mutations in cohort1 = 3
+2021-07-15 15:21:21,548 [19342] INFO     hotspotfinder: Input del mutations in cohort1 = 3
+2021-07-15 15:21:21,548 [19342] INFO     hotspotfinder: Input total mutations in cohort1 = 10
+2021-07-15 15:21:21,548 [19342] INFO     hotspotfinder: Mutations parsed
+2021-07-15 15:21:21,548 [19342] INFO     hotspotfinder: Identifying hotspots...
+2021-07-15 15:21:21,549 [19342] INFO     hotspotfinder: Hotspots identified
+2021-07-15 15:21:21,549 [19342] INFO     hotspotfinder: Writing output file...
+2021-07-15 15:21:21,549 [19342] DEBUG    hotspotfinder: ['17_7571726_del', 'del', 'cohort2', '3', '3', 'GT,G', '-', 'GT=1,G=2', 'GT=0.3333333333333333,G=0.6666666666666666', 'sample13::G;sample14::G;sample15::GT']
+2021-07-15 15:21:21,549 [19342] DEBUG    hotspotfinder: ['17_7571726_mnv', 'mnv', 'cohort1', '3', '3', 'GT,GTG', 'CA,CC,CGA', 'CC=1,CGA=1,CA=1', 'CC=0.3333333333333333,CGA=0.3333333333333333,CA=0.3333333333333333', 'sample4::CC;sample5::CA;sample6::CGA']
+2021-07-15 15:21:21,550 [19342] DEBUG    hotspotfinder: ['17_7571726_ins', 'ins', 'cohort1', '3', '3', '-', 'A,AA', 'A=2,AA=1', 'A=0.6666666666666666,AA=0.3333333333333333', 'sample7::A;sample8::A;sample9::AA']
+2021-07-15 15:21:21,550 [19342] DEBUG    hotspotfinder: ['17_7571726_del', 'del', 'cohort1', '3', '3', 'G,GTGGC', '-', 'G=2,GTGGC=1', 'G=0.6666666666666666,GTGGC=0.3333333333333333', 'sample10::G;sample11::G;sample12::GTGGC']
+2021-07-15 15:21:21,550 [19342] INFO     hotspotfinder: Total hotspots identified: 4
+2021-07-15 15:21:21,550 [19342] INFO     hotspotfinder: Hotspots saved to file
+2021-07-15 15:21:21,551 [19342] INFO     hotspotfinder: HotspotFinder analysis finished!

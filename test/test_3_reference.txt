@@ -1,0 +1,13 @@
+CHROMOSOME	POSITION	REF	ALT	SAMPLE	GROUP
+17	7571726	A	T	sample1	cohort1
+17	7571726	G	T	sample2	cohort1
+17	7571726	G	T	sample3	cohort1
+17	7571726	GA	CC	sample4	cohort1
+17	7571726	GT	CA	sample5	cohort1
+17	7571726	GTG	CGA	sample6	cohort1
+17	7571726	-	A	sample7	cohort1
+17	7571726	T	GA	sample8	cohort1
+17	7571726	G	GAA	sample9	cohort1
+17	7571726	A	-	sample10	cohort1
+17	7571725	TG	T	sample11	cohort1
+17	7571725	TGTGGC	T	sample12	cohort1
