@@ -471,7 +471,8 @@ class HotspotFinder:
 
                         # Skip hotspots below threshold of number of mutated samples
                         if n_mut_samples < self.hotspot_mutated_samples:
-                            print(hotspot_id_type, list_of_alternates, n_mut_samples, mut_samples)
+                            logger.debug('Number of mutated samples is below the hotspot definition threshold',
+                                         hotspot_id_type, list_of_alternates, n_mut_samples, mut_samples)
                             continue
 
                         # Alternates
@@ -489,19 +490,20 @@ class HotspotFinder:
                         mut_samples_to_alt = ';'.join([f'{k}::{",".join(v)}' for k, v in mut_samples_to_alt.items()])
                         mut_samples = ';'.join(list(mut_samples))
 
-                        # Sequence context
+                        # Sequence context and reference nucleotide(s)
                         # Retrieve reference genome sequence contexts
                         pentamer_sequence = bgref.refseq(self.genome, chromosome, int(position) - 2, 5)
                         trimer_sequence = pentamer_sequence[1:4]
-                        if muttype == 'ins':
+                        # Retrieve reference nucleotides
+                        if muttype == 'snv':
+                            ref = pentamer_sequence[2]
+                        elif muttype == 'ins':
                             ref = '-'
-                        elif muttype == 'del':
+                        else:  # MNVs and deletions
                             ref = set()
                             for sample in mut_samples.split(';'):
-                                ref.update(self.mutation_counts.reference(chr_pos, sample))
+                                ref.update(self.mutation_counts.reference(chr_pos, muttype, sample))
                             ref = ','.join(list(ref))
-                        else:
-                            ref = pentamer_sequence[2]
 
                         logger.debug(list(map(str, [
                                                   hotspot_id_type,
@@ -514,9 +516,7 @@ class HotspotFinder:
                                                   alternates_counts,
                                                   alternates_fractions,
                                                   mut_samples_to_alt
-                                              ]))
-
-                        )
+                                              ])))
 
                         # Warning flag: at least one sample in the dataset contains a warning in this position
                         warning_flag = 'True' if chr_pos in self.warning_chr_position else 'False'
@@ -524,8 +524,7 @@ class HotspotFinder:
                         # Append hotspot data to list
                         # When the method runs without annotations, this is the output per hotspot
                         data_to_write += list(map(str,
-                                                 [
-                                                     chromosome,
+                                                 [   chromosome,
                                                      position,
                                                      chr_pos,
                                                      hotspot_id_type,
@@ -548,8 +547,7 @@ class HotspotFinder:
                                                      n_cohort_mut_del,
                                                      mut_samples,
                                                      mut_samples_to_alt,
-                                                     warning_flag
-                        ]))
+                                                     warning_flag]))
 
                         # Genomic annotations
                         # If the method runs with annotations, compute them and add them to results
@@ -639,8 +637,7 @@ class HotspotFinder:
                             coding_noncoding = 'CODING' if 'cds' in genomic_elements_type else 'NONCODING'
 
                             data_to_write += list(map(str,
-                                                 [
-                                                     genomic_elements_full,
+                                                 [   genomic_elements_full,
                                                      symbol,
                                                      geneid,
                                                      transcriptid,
@@ -654,8 +651,7 @@ class HotspotFinder:
                                                      repeats,
                                                      in_repeat,
                                                      ig_tr_loci,
-                                                     in_ig_tr_loci,
-                        ]))
+                                                     in_ig_tr_loci]))
 
                         # Write
                         ofd.write('{}\n'.format('\t'.join(data_to_write)))
@@ -686,4 +682,3 @@ class HotspotFinder:
         logger.info('Writing output file...')
         self.write_hotspots()
         logger.info('Hotspots saved to file')
-

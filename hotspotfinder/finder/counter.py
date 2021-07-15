@@ -58,6 +58,7 @@ class MutationCounter:
             if len(pentamer_sequence) != len([i for i in pentamer_sequence if i in self.nucleotides]):
                 self.unknown_nucleotides_in_context += 1
                 return
+            self.original_reference['mnv'][sample][chr_position].add(ref)
 
         # Read indels
         elif alt_type == 'indel':
@@ -90,7 +91,6 @@ class MutationCounter:
                 if len(pentamer_sequence) != len([i for i in pentamer_sequence if i in self.nucleotides]):
                     self.unknown_nucleotides_in_context += 1
                     return
-                # todo remove original_reference
                 self.original_reference['del'][sample][chr_position].add(ref)
                 alt = ref
             else:
@@ -137,5 +137,5 @@ class MutationCounter:
                 n_muts += len(self.samples_and_alternates[cohort][muttype][mut][sample])
         return n_muts
 
-    def reference(self, mut, sample):
-        return self.original_reference['del'][sample][mut]
+    def reference(self, mut, muttype, sample):
+        return self.original_reference[muttype][sample][mut]
