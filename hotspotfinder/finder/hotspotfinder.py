@@ -72,6 +72,23 @@ class HotspotFinder:
         self.output_file_hotspots = output_file_results
         self.output_file_warning = output_file_warning
 
+        # Parameters
+        self.genome = config['genome']
+        self.cores = config['cores']
+        self.hotspot_mutated_samples = config['finder']['samples_cutoff']
+        self.hotspot_mutations = config['finder']['mutations_cutoff']
+        self.remove_nonannotated_hotspots = config['finder']['remove_nonannotated_hotspots']
+        self.group_by = config['finder']['groupby']
+        self.split_alternates = config['finder']['split_alternates']
+        self.annotate_hotspots = config['finder']['annotate']
+
+        # Initialize variables to load data
+        self.mutation_counts = MutationCounter(self.genome)
+        self.cohort_to_mutation_alts = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+        self.hotspots = defaultdict(lambda: defaultdict(dict))
+        self.warning_chr_position = set()
+
+        # Load genomic annotations if required
         if config['finder']['annotate']:
 
             logger.info('Loading genomic annotations...')
@@ -97,22 +114,6 @@ class HotspotFinder:
             self.regions_tree = self.load_genomic_elements(config['genomic_elements'])
             self.genomic_elements_priority = {e: i for i, e in enumerate(HotspotFinder.GENOMIC_ELEMENTS)}
             logger.info('Genomic regions loaded')
-
-        # Params
-        self.genome = config['genome']
-        self.cores = config['cores']
-        self.hotspot_mutated_samples = config['finder']['samples_cutoff']
-        self.hotspot_mutations = config['finder']['mutations_cutoff']
-        self.remove_nonannotated_hotspots = config['finder']['remove_nonannotated_hotspots']
-        self.group_by = config['finder']['groupby']
-        self.split_alternates = config['finder']['split_alternates']
-        self.annotate_hotspots = config['finder']['annotate']
-
-        # Initialize variables to load data
-        self.mutation_counts = MutationCounter(self.genome)
-        self.cohort_to_mutation_alts = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
-        self.hotspots = defaultdict(lambda: defaultdict(dict))
-        self.warning_chr_position = set()
 
     @staticmethod
     def load_mappability(file, chr_format='chrN'):
@@ -224,6 +225,11 @@ class HotspotFinder:
 
         """
 
+        # Cohort name
+        # By default, hotspots are computed using all mutations in the input file
+        # This is overwritten when self.group_by is True
+        cohort = self.input_file.split('/')[-1].split('.')[0]
+
         # Read mutations
         for row in readers.variants(
                 file=self.input_file,
@@ -236,13 +242,14 @@ class HotspotFinder:
             alt = row['ALT']
             alt_type = row['ALT_TYPE']
             sample = row['SAMPLE']
+
             # Identify group
-            # If no group, hotspots are computed using the whole input file
+            # If analysis is carried out per group, use the group value of the row
             if self.group_by:
                 cohort = row[self.group_by]
-            else:
-                cohort = self.input_file.split('/')[-1].split('.')[0]
+
             # Read mutations in autosomal + sexual chromosomes
+            # Skip mutations whose reference nucleotide(s) is/are equal to the alternate nucleotide(s)
             if chromosome in set(HotspotFinder.CHROMOSOMES) and ref != alt:
                 self.mutation_counts.add_mutation(chromosome, position, ref, alt, alt_type, sample, cohort)
 
@@ -270,31 +277,43 @@ class HotspotFinder:
                 muts_cohort += nmuts
             logger.info(f'Input total mutations in {cohort} = {muts_cohort}')
 
-        # Check mutations per sample
-        # Write warning positions
+    def load_mutations(self):
+        """
+        Check that there is one mutation per sample and add it to a dictionary to compute hotspots
+        If a sample has more than one mutation in a given position, report it and filter mutations out if necessary
+
+        This function writes the warning positions output file
+        """
+
         header = ['CHROMOSOME', 'POSITION', 'REF', 'ALT', 'SAMPLE', 'WARNING', 'SKIP']
         with file_open(self.output_file_warning) as ofd:
             ofd.write('{}\n'.format('\t'.join(header)))
             warning_samples_n = 0
             for cohort in self.mutation_counts.get_cohorts():
                 for sample in self.mutation_counts.get_samples(cohort):
+
+                    # Get mutations per sample
                     total_muts_in_sample = defaultdict(list)
-                    # TODO check if we can build a unified list in the above step
                     for chr_pos, muttype, alts in self.mutation_counts.get_mutations_and_alternates(cohort, sample):
                         total_muts_in_sample[chr_pos] += [(a, muttype) for a in alts]
 
-                    for chr_position, alts in total_muts_in_sample.items():
-                        if len(alts) == 1:
-                            # unique mutations
-                            alt, muttype = alts[0]
+                    # Check number of mutations per position
+                    for chr_position, alts_data in total_muts_in_sample.items():
+
+                        # There is only one mutation per position (this is expected)
+                        if len(alts_data) == 1:
+                            alt, muttype = alts_data[0]
                             self.cohort_to_mutation_alts[cohort][muttype][f'{chr_position}_{muttype}'] += [alt]
 
-                        elif len(alts) > 1:
+                        # There is more than one mutation per position
+                        elif len(alts_data) > 1:
                             warning_samples_n += 1
                             chromosome, position = chr_position.split('_')
-                            alts_unique = set(alts)
-                            alts_simplified = [a for a, muttype in alts]
+                            alts_unique = set(alts_data)
+                            alts_simplified = [a for a, muttype in alts_data]
                             self.warning_chr_position.add(chr_position)
+
+                            # The mutations are the same
                             if len(alts_unique) == 1:
                                 logger.debug(
                                     f'Sample "{sample}" position chr{chr_position} has repeated alternates: '
@@ -302,12 +321,14 @@ class HotspotFinder:
                                     f'the number of mutations and the number of mutated samples will not match.'
                                 )
                                 alt, muttype = list(alts_unique)[0]
-                                self.cohort_to_mutation_alts[cohort][muttype][f'{chr_position}_{muttype}'] += alts_simplified
+                                self.cohort_to_mutation_alts[cohort][muttype][
+                                    f'{chr_position}_{muttype}'] += alts_simplified
                                 reference_n = bgref.refseq(self.genome, chromosome, int(position), 1)
                                 ofd.write('{}\n'.format('\t'.join([
                                     chromosome, position, reference_n, ','.join(alts_simplified),
                                     sample, 'warning_1', 'False'
                                 ])))
+                            # There are two different mutations
                             elif len(alts_unique) == 2:
                                 logger.debug(
                                     f'Sample "{sample}" position chr{chr_position} has 2 different alternates: '
@@ -319,9 +340,10 @@ class HotspotFinder:
                                     chromosome, position, reference_n, ','.join(alts_simplified),
                                     sample, 'warning_2', 'False'
                                 ])))
-                                for mutation in alts:
+                                for mutation in alts_data:
                                     alt, muttype = mutation
                                     self.cohort_to_mutation_alts[cohort][muttype][f'{chr_position}_{muttype}'] += [alt]
+                            # There are 3 or more different mutations
                             else:
                                 logger.debug(
                                     f'Sample "{sample}" position chr{chr_position} has 3 or more different alternates: '
@@ -331,8 +353,9 @@ class HotspotFinder:
                                     chromosome, position, reference_n, ','.join(alts_simplified),
                                     sample, 'warning_3', 'True'
                                 ])))
-                                # FIXME muttype
-                                self.mutation_counts.discard_mutation(cohort, sample, muttype, chr_position)
+                                for mutation in alts_data:
+                                    alt, muttype = mutation
+                                    self.mutation_counts.discard_mutation(cohort, sample, muttype, chr_position)
 
         if warning_samples_n > 0:
             logger.warning(f'A total of {warning_samples_n} sample{"s" if warning_samples_n > 1 else ""} '
@@ -357,16 +380,6 @@ class HotspotFinder:
                 else:
                     self.hotspots[cohort][muttype] = {k: v for k, v in mutated_positions.items() if
                                                       len(v) >= self.hotspot_mutations}
-
-        hotspots_unique = set()
-        for cohort, data in self.hotspots.items():
-            for muttype, mutated_positions in data.items():
-                for i in mutated_positions:
-                    hotspots_unique.add(i)
-                    if i == '22_22890207_snv':
-                        print('Hotspot here 22_22890207_snv')
-
-        print(len(hotspots_unique))
 
     def write_hotspots(self):
         """
@@ -471,8 +484,9 @@ class HotspotFinder:
 
                         # Skip hotspots below threshold of number of mutated samples
                         if n_mut_samples < self.hotspot_mutated_samples:
-                            logger.debug('Number of mutated samples is below the hotspot definition threshold',
-                                         hotspot_id_type, list_of_alternates, n_mut_samples, mut_samples)
+                            logger.debug('Number of mutated samples is below the hotspot definition threshold:\n'
+                                         f'{hotspot_id_type} has {n_mut_samples}'
+                                         f' mutated sample{"s" if n_mut_samples > 1 else ""}')
                             continue
 
                         # Alternates
@@ -671,6 +685,7 @@ class HotspotFinder:
         logger.info('Parsing mutations...')
         # Parse mutations and apply warning checks for samples with more than one mutation in the same chr:position
         self.parse_mutations()
+        self.load_mutations()
         logger.info('Mutations parsed')
 
         # Identify hotspots based on the threshold of mutations
