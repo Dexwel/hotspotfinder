@@ -345,17 +345,21 @@ class HotspotFinder:
                                     self.cohort_to_mutation_alts[cohort][muttype][f'{chr_position}_{muttype}'] += [alt]
                             # There are 3 or more different mutations
                             else:
-                                logger.debug(
-                                    f'Sample "{sample}" position chr{chr_position} has 3 or more different alternates: '
-                                    f'{alts_simplified}. Mutations are skipped from analysis')
+                                alternates_to_print = set()
                                 reference_n = bgref.refseq(self.genome, chromosome, int(position), 1)
-                                ofd.write('{}\n'.format('\t'.join([
-                                    chromosome, position, reference_n, ','.join(alts_simplified),
-                                    sample, 'warning_3', 'True'
-                                ])))
                                 for mutation in alts_data:
                                     alt, muttype = mutation
                                     self.mutation_counts.discard_mutation(cohort, sample, muttype, chr_position)
+                                    alt = alt if muttype != 'del' else '-'
+                                    alternates_to_print.add(alt)
+                                print(alternates_to_print)
+                                logger.debug(
+                                    f'Sample "{sample}" position chr{chr_position} has 3 or more different alternates: '
+                                    f'{alternates_to_print}. Mutations are skipped from analysis')
+                                ofd.write('{}\n'.format('\t'.join([
+                                    chromosome, position, reference_n, ','.join(alternates_to_print),
+                                    sample, 'warning_3', 'True'
+                                ])))
 
         if warning_samples_n > 0:
             logger.warning(f'A total of {warning_samples_n} sample{"s" if warning_samples_n > 1 else ""} '
