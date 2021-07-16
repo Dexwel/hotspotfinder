@@ -1,0 +1,4 @@
+CHROMOSOME	POSITION	REF	ALT	SAMPLE	WARNING	SKIP
+17	7571726	G	T,T	sample3	warning_1	False
+17	7571727	T	C,G	sample6	warning_2	False
+17	7571728	G	-,T,C	sample9	warning_3	True
