@@ -352,7 +352,6 @@ class HotspotFinder:
                                     self.mutation_counts.discard_mutation(cohort, sample, muttype, chr_position)
                                     alt = alt if muttype != 'del' else '-'
                                     alternates_to_print.add(alt)
-                                print(alternates_to_print)
                                 logger.debug(
                                     f'Sample "{sample}" position chr{chr_position} has 3 or more different alternates: '
                                     f'{alternates_to_print}. Mutations are skipped from analysis')
