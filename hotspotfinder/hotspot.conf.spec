@@ -13,7 +13,7 @@ genomic_elements = string()
 samples_cutoff = integer(default=3)
 mutations_cutoff = integer(default=3)
 remove_nonannotated_hotspots = boolean(default=True)
-groupby = option('GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE', 'PLATFORM', default=None)
+groupby = option('GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE', 'PLATFORM', 'TYPE', default=None)
 split_alternates = boolean(default=False)
 annotate = boolean(default=True)
 

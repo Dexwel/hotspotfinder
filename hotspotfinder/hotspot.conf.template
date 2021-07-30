@@ -65,7 +65,7 @@ mutations_cutoff = 3
 remove_nonannotated_hotspots = True
 
 # Identify hotspots in different groups of samples in the input mutations file
-# Column names to group samples are 'GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE' and 'PLATFORM'
+# Column names to group samples are: 'GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE', 'PLATFORM', 'TYPE'
 # By default, hotspots are computed using all samples in the input mutations file
 # Uncomment the line below to identify hotspots based on column name 'GROUP'
 # groupby = 'GROUP'

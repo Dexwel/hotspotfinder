@@ -234,7 +234,7 @@ class HotspotFinder:
         for row in readers.variants(
                 file=self.input_file,
                 required=['CHROMOSOME', 'POSITION', 'REF', 'ALT', 'SAMPLE'],
-                extra=['GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE', 'PLATFORM']
+                extra=['GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE', 'PLATFORM', 'TYPE']
         ):
             chromosome = row['CHROMOSOME']
             position = row['POSITION']
