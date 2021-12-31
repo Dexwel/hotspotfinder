@@ -6,7 +6,7 @@ genome = 'hg38'
 cores = 1
 
 # Format of output file: 'tsv', 'tsv.gz'
-output_format = 'tsv.gz'
+output_format = 'tsv'
 
 
 # Mappability
