@@ -10,8 +10,8 @@ ig_tr_regions = string()
 genomic_elements = string()
 
 [finder]
-samples_cutoff = integer(default=3)
-mutations_cutoff = integer(default=3)
+samples_cutoff = integer(default=2)
+mutations_cutoff = integer(default=2)
 remove_nonannotated_hotspots = boolean(default=True)
 groupby = option('GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE', 'PLATFORM', 'TYPE', default=None)
 split_alternates = boolean(default=False)

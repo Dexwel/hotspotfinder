@@ -50,15 +50,15 @@ genomic_elements = '/workspace/projects/noncoding_regions/data/regions/genomic_e
 [finder]
 
 # Minimum number of mutated samples to identify a hotspot
-# By default, hotspots are defined as 3 mutated samples or more
-samples_cutoff = 3
+# By default, hotspots are defined as 2 mutated samples or more
+samples_cutoff = 2
 
 # Minimum number of mutations to identify a hotspot
 # By definition, hotspots contain at least 2 mutations
 # The number of mutations per hotspot may not be equal to the number
 # of mutated samples per hotspot (e.g., one sample can contain two mutations)
-# By default, hotspots are defined as 3 mutations or more
-mutations_cutoff = 3
+# By default, hotspots are defined as 2 mutations or more
+mutations_cutoff = 2
 
 # By default, hotspots not overlapping genomic elements are removed from the output file
 # Set variable to False if you want to keep these hotspots in the output file

@@ -27,9 +27,9 @@ LOG_LEVELS = {
 @click.option('-o', '--output-directory', default=None, required=True, help='Output directory')
 @click.option('-g', '--genome', default=None, type=click.Choice(['hg38']), help='Genome to use')
 @click.option('-mcutoff', '--mutations-cutoff', type=click.IntRange(min=2, max=None, clamp=False), default=None,
-              help='Cutoff of mutations to define a hotspot. Default is 3')
+              help='Cutoff of mutations to define a hotspot. Default is 2')
 @click.option('-scutoff', '--samples-cutoff', type=click.IntRange(min=2, max=None, clamp=False), default=None,
-              help='Cutoff of number of mutated samples to define a hotspot. Default is 3')
+              help='Cutoff of number of mutated samples to define a hotspot. Default is 2')
 @click.option('-group', '--group-by', default=None,
               type=click.Choice(['GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE', 'PLATFORM']),
               help='Header of the column to group hotspots identification')
