@@ -638,20 +638,21 @@ class HotspotFinder:
                                     list(genomic_elements_type), key=lambda x: self.genomic_elements_priority.get(x, 999)))
                                 genomic_elements_type_priority = genomic_elements_type.split(';')[0]
                             else:
-                                genomic_elements_full = 'None'
-                                symbol = 'None'
-                                geneid = 'None'
-                                transcriptid = 'None'
-                                genomic_elements_type = 'None'
-                                genomic_elements_type_priority = 'None'
+                                genomic_elements_full = 'No_annotated'
+                                symbol = 'No_annotated'
+                                geneid = 'No_annotated'
+                                transcriptid = 'No_annotated'
+                                genomic_elements_type = 'No_annotated'
+                                genomic_elements_type_priority = 'No_annotated'
 
                             # If specified (remove_nonannotated_hotspots is True)
                             # filter out hotspots that do not overlap any known region
-                            if self.remove_nonannotated_hotspots is True and genomic_elements_full == 'None':
+                            if self.remove_nonannotated_hotspots is True and genomic_elements_full == 'No_annotated':
                                 continue
 
-                            # Coding or noncoding flag
+                            # Coding, noncoding or Ig-TR flag
                             coding_noncoding = 'CODING' if 'cds' in genomic_elements_type else 'NONCODING'
+                            coding_noncoding = 'IG_TCR' if in_ig_tr_loci == 'True' else coding_noncoding
 
                             data_to_write += list(map(str,
                                                  [   genomic_elements_full,
