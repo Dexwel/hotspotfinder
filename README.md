@@ -82,6 +82,7 @@ to a hotspot. Hotspots are independently identified in each of the four mutation
 single nucleotide variants (SNVs), multi-nucleotide variants (MNVs), short insertions and short deletions. 
 
 The basic columns containing hotspots are:
+
 - CHROMOSOME: chromosome
 - POSITION: position
 - CHR_POS: chromosome and position
@@ -128,6 +129,7 @@ The additional columns for annotations are:
 ### Warning positions
 During the process of parsing of mutations some unexpected data can be observed and are reported in a separate
  TSV file, warningpositions.txt, with the following header: 
+ 
  - CHROMOSOME: chromosome 1-22, X or Y. ('chr' prefix not included)
  - POSITION: genomic coordinate
  - REF: reference nucleotide(s)
