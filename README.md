@@ -1,12 +1,11 @@
 HotspotFinder
 ================
 
-This repository contains HotspotFinder, a tool for the identification and annotation of hotspots across the genome.
+This repository contains HotspotFinder, a tool for the identification and annotation of hotspots of somatic mutations across the genome.
 
 HotspotFinder first identifies recurrently mutated single nucleotide positions or hotspots across the genome using 
 somatic mutations from cancer samples. This is, HotspotFinder finds which genomic positions are mutated in two or 
 more patients. Then, HotspotFinder annotates hotspots with a set of genomic data to guide their interpretation. 
-
 
 
 # License
@@ -18,7 +17,7 @@ HotspotFinder is available to the general public subject to certain conditions d
 
 HotspotFinder is implemented in **Python 3.6**.
 
-You can obtain the latest code from the repository and install it with pip::
+You can obtain the latest code from the repository and install it with pip:
 
     $ git clone git@bitbucket.org:bbglab/hotspotfinder.git
     $ cd hotspotfinder
@@ -29,10 +28,14 @@ The first time that you run HotspotFinder it will automatically download data fr
 downloaded datasets go to ``~/.bgdata``. If you want to move these datasets to another folder you have to define the
 system environment variable BGDATA_LOCAL with an export command.
 
-The following command will show you the help::
+The following command will show you the help:
 
     $ hotspotfinder --help
 
+You can run HotspotFinder as: 
+
+    $ hotspotfinder -i {input_file} -o {output_path} -conf {config_file}
+ 
 
 # Input files and annotations
 
@@ -78,48 +81,48 @@ to a hotspot. Hotspots are independently identified in each of the four mutation
 single nucleotide variants (SNVs), multi-nucleotide variants (MNVs), short insertions and short deletions. 
 
 The basic columns containing hotspots are:
-- CHROMOSOME
-- POSITION
-- CHR_POS
-- HOTSPOT_ID
-- MUT_TYPE
-- COHORT
-- N_MUTATIONS
-- N_MUTATED_SAMPLES
-- FRAC_MUTATED_SAMPLES
-- REF
-- ALT
-- ALT_COUNTS
-- FRAC_ALT
-- CONTEXT_3
-- CONTEXT_5
-- N_COHORT_SAMPLES
-- N_COHORT_MUTATIONS_TOTAL
-- N_COHORT_MUTATIONS_SNV
-- N_COHORT_MUTATIONS_MNV
-- N_COHORT_MUTATIONS_INS
-- N_COHORT_MUTATIONS_DEL
-- MUTATED_SAMPLES
-- MUTATED_SAMPLES_ALTS
-- OVERLAP_WARNING_POSITION
+- CHROMOSOME: chromosome
+- POSITION: position
+- CHR_POS: chromosome and position
+- HOTSPOT_ID: unique hotspot identifier
+- MUT_TYPE: mutation type
+- COHORT: input cohort (file) name
+- N_MUTATIONS: number of mutations in the hotspot
+- N_MUTATED_SAMPLES: number of mutated samples in the hotspot
+- FRAC_MUTATED_SAMPLES: fraction of mutated samples in the cohort
+- REF: reference nucleotide
+- ALT: alternate nucleotide(s)
+- ALT_COUNTS: number of alternate nucleotide(s)
+- FRAC_ALT: proportion of alternates among total alternates
+- CONTEXT_3: trinucleotide context centred at the hotspot
+- CONTEXT_5: pentanucleotide context centred at the hotspot
+- N_COHORT_SAMPLES: number of samples in the cohort
+- N_COHORT_MUTATIONS_TOTAL: number of total mutations in the cohort
+- N_COHORT_MUTATIONS_SNV: number of single base substitutions in the cohort
+- N_COHORT_MUTATIONS_MNV: number of multi-nucleotide substitutions in the cohort
+- N_COHORT_MUTATIONS_INS: number of insertions in the cohort
+- N_COHORT_MUTATIONS_DEL: number of deletions in the cohort
+- MUTATED_SAMPLES: identifier of mutated samples
+- MUTATED_SAMPLES_ALTS: identifier and corresponding alternate of mutated samples  
+- OVERLAP_WARNING_POSITION: True if the hotspot overlaps a warning position
 
 The additional columns for annotations are:  
 
-- GENOMIC_ELEMENT
-- SYMBOL
-- GENE_ID
-- TRANSCRIPT_ID
-- GENOMIC_REGION
-- GENOMIC_REGION_PRIORITY
-- CODING_NONCODING
-- MAPPABILITY
-- MAPPABILITY_BLACKLIST
-- VARIATION_AF
-- HOTSPOTFINDER_FILTERS
-- REPEATS
-- REPEATS_OVERLAP
-- IG_TR
-- IG_TR_OVERLAP
+- GENOMIC_ELEMENT: overlapping genomic element(s) 
+- SYMBOL: symbols off overlapping genomic element(s)
+- GENE_ID: Ensembl gene identifiers of overlapping genomic elements
+- TRANSCRIPT_ID: Ensembl transcript identifiers of overlapping genomic elements
+- GENOMIC_REGION: class of overlapping genomic element(s) 
+- GENOMIC_REGION_PRIORITY: genomic element class with highest priority
+- CODING_NONCODING: overlapping coding or non-coding genomic elements 
+- MAPPABILITY: high or low according to GEM mappability regions overlap
+- MAPPABILITY_BLACKLIST: pass if no overlap with blacklisted mappability regions
+- VARIATION_AF: overlapping population variants
+- HOTSPOTFINDER_FILTERS: flag if hotspot is mappable and does not overlap blacklisted mappability regions or population variants. 
+- REPEATS: overlapping repeats
+- REPEATS_OVERLAP: flag if hotspot overlaps repeats
+- IG_TR: overlapping immunoglobulin regions
+- IG_TR_OVERLAP: flag if hotspot overlaps immunoglobulin regions
 
 ### Warning positions
 During the process of parsing of mutations some unexpected data can be observed and are reported in a separate
@@ -132,59 +135,9 @@ During the process of parsing of mutations some unexpected data can be observed 
  - WARNING: type of warning (see Mutations parsing for further information)
  - SKIP: if True, this flag indicates that the mutation has been discarded from analysis
   
- **Please read section “Mutations parsing” for further information.** 
+# How to cite and additional information
 
-# Mutations parsing
+If you use HotspotFinder, please cite our manuscript at: 
 
-Parsing of somatic mutations is performed in two steps. 
 
-In the first step, the package **bgparsers** reads the mutation file and categorizes mutations into 3 mutation types: 
-SNVs, MNVs and indels. Indels are further classified into simple insertions (e.g., G>GA or G>GAAA) or simple deletions 
-(e.g, GT>G, GTG>G). Complex indels that are a mixture of both previous categories (e.g., GTG>GA, GTG>GAAA) are skipped. 
-At this level, some filters are applied: 
-1) mutations falling outside of autosomal or sexual chromosomes are skipped; 
-2) mutations having the same reference and alternate nucleotides are removed; 
-3) mutations having a reference nucleotides that do not correspond to the reference genome build 
-(in this case, only for SNVs, MNVs and deletions) are discarded; 
-4) mutations that contain an unknown nucleotide (a nucleotide not corresponding to A, C, G, T) are removed; 
-5) mutations with an unknown nucleotide in their pentamer sequence context, according to their start position, 
-are skipped from the analysis. 
-
-In the second step, the algorithm checks how many alternates a given patient has for each mutated position of the 
-genome: 
-1) If there is only one alternate count for a given patient, genome position and mutation type, this mutation is kept 
-for the analysis. 
-2) If there is more than one alternate count for a given patient, genome position and mutation type, three situations 
-can occur and are categorized in a warning level as follows: 1) a unique alternate is found more than one time 
-(e.g., chr1:23798511_G>A and chr1:23798511_G>A); 2) there are two different alternates 
-(e.g., chr1:23798511_G>A and chr1:23798511_G>C); 3) there are three or more different alternates 
-(e.g., chr1:23798511_G>A, chr1:23798511_G>C and chr1:23798511_G>T). Given that mutations in scenario 1 and 2 are 
-likely to reflect bona fide biological information (homozygous or heterozygous mutants for a locus, respectively) 
-all mutations are kept for analysis. This implies that the number of mutations and the number of mutated samples 
-in a given position in the genome will not match. Mutations in scenario 3 are discarded because their biological 
-interpretation is unclear. Any mutation falling in these three categories is reported in the output file 
-**warningpositions.txt**. This information is also highlighted in the OVERLAP_WARNING_POSITION column in 
-the hotspots output file results.tsv. 
-
-# Hotspots identification
-Hotspots are defined as single genomic positions bearing 2 or more somatic mutations from 2 or more different patients. 
-Hotspots are independently identified for 4 types of mutations: single nucleotide variants (SNVs), 
-multi-nucleotide variants (MNVs), short insertions and short deletions. 
-
-By default, mutations are merged together according to their reference start position, irrespective of the length of 
-the reference or alternate nucleotides in the case of MNVs, insertions and deletions. 
-
-In the current version, it is also possible to restrict the identification of hotspots to those mutations sharing the 
-same nucleotide change in the case of SNVs and MNVs, equal inserted sequence in the case of insertions or equal 
-deleted sequence in the case of deletions. This behaviour can be specified in the configuration file. 
-
-# Hotspots annotation
-Once hotspots are identified, by default HotspotFinder intersects their coordinates with genomic annotations. 
-One can disable this option in the configuration file and the running time will be shortened. 
-Hotspots that do not overlap high mappability regions or do overlap mappability blacklisted regions are considered 
-artifact hotspots and are flagged accordingly. Similarly, hotspots that overlap a polymorphic site, irrespective of 
-the mutation type or alternate, are considered artifacts of germline filtering. Importantly,
- **artifact hotspots are kept in the output file “results.tsv”.** 
-
-By default, hotspots that do not overlap genomic elements are removed from the output file. 
-This can be changed in the configuration file. 
+Additional information about HotspotFinder can be found at the Supplementary Note 1 of our manuscript. 
