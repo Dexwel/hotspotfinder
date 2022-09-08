@@ -20,7 +20,6 @@ LOG_LEVELS = {
     'critical': logging.CRITICAL
 }
 
-# TODO remove cores
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.option('-i', '--input-mutations', default=None, required=True, type=click.Path(exists=True),
               help='User input file containing somatic mutations in TSV format')
@@ -33,8 +32,8 @@ LOG_LEVELS = {
 @click.option('-group', '--group-by', default=None,
               type=click.Choice(['GROUP', 'GROUP_BY', 'COHORT', 'CANCER_TYPE', 'PLATFORM']),
               help='Header of the column to group hotspots identification')
-@click.option('-c', '--cores', type=click.IntRange(min=1, max=os.cpu_count(), clamp=False), default=None,
-              help='Number of cores to use in the computation. By default it uses all available cores.')
+@click.option('-c', '--cores', type=click.IntRange(min=1, max=1, clamp=False), default=None,
+              help='Number of cores to use in the computation. Only 1 core is available at the moment')
 @click.option('-conf', '--configuration-file', default=None,
               required=False, type=click.Path(exists=True), help='User input configuration file')
 @click.option('--log-level', default='info', help='Verbosity of the logger',

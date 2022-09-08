@@ -3,6 +3,7 @@
 genome = 'hg38'
 
 # Number of cores
+# Only 1 core is available at the moment
 cores = 1
 
 # Format of output file: 'tsv', 'tsv.gz'
