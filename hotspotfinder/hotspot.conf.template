@@ -33,19 +33,19 @@ population_variants = "%(bgdata://populationvariants/hg38/gnomad_v3_AF1)"
 # Read a file containing repeatitive DNA sequences.
 # By default, these regions are obtained from bgdata
 # Alternatively, you can provide a path to a file
-repeats = '/workspace/projects/noncoding_regions/data/repeatmasker/hg38_repeatmasker.reformat.gz'
+repeats = "%(bgdata://repeatmasker/repeats/hg38)"
 
 # Ig and T-cell receptor regions
 # Read a file containing Ig and TR regions.
 # By default, these regions are obtained from bgdata
 # Alternatively, you can provide a path to a file
-ig_tr_regions = '/workspace/projects/genomic_regions/hg38/release_2/IG_TR_loci/hg38_IG_TR_loci.tstart_to_tend.gz'
+ig_tr_regions = "%(bgdata://gencode/ig_tr_regions/hg38)"
 
 # Genomic elements
 # Read a file with genomic regions annotations to annotate hotspots
 # By default, this regions are obtained from bgdata
 # Alternatively, you can provide a path to a file
-genomic_elements = '/workspace/projects/noncoding_regions/data/regions/genomic_elements/new/hg38_release2_annotations.txt.gz'
+genomic_elements = "%(bgdata://gencode/annotations/hg38)"
 
 
 [finder]
