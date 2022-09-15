@@ -3,3 +3,6 @@ include MANIFEST.in
 include requirements.txt
 include README.md
 include LICENSE.txt
+include ./hotspot.conf
+include ./hotspot.conf.spec
+include ./hotspot.conf.template
