@@ -23,4 +23,4 @@ dist/
 .ipynb_checkpoints
 
 # Configuration files
-*.conf
+# *.conf
