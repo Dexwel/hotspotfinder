@@ -2,6 +2,8 @@ from os import path
 from setuptools import setup, find_packages
 from hotspotfinder import __version__
 
+include_package_data=True
+
 
 directory = path.dirname(path.abspath(__file__))
 with open(path.join(directory, 'requirements.txt')) as f:
@@ -19,6 +21,7 @@ setup(
     long_description_content_type='text/markdown',
     packages=find_packages(),
     install_requires=required,
+    include_package_data=True,
     url="https://bitbucket.org/bbglab/hotspotfinder",
     author="BBGLab",
     author_email="bbglab@irbbarcelona.org",
